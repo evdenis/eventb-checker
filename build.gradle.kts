@@ -22,7 +22,7 @@ dependencies {
     implementation("com.github.ajalt.clikt:clikt:4.2.2")
 
     testImplementation(kotlin("test"))
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.0.3")
     testImplementation("org.assertj:assertj-core:3.25.3")
     implementation("org.json:json:20240303")
 }

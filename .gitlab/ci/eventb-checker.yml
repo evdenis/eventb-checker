@@ -1,0 +1,95 @@
+# Reusable Event-B validation template for GitLab CI.
+#
+# Usage — add to your .gitlab-ci.yml:
+#
+#   include:
+#     - remote: 'https://raw.githubusercontent.com/eventb-org/eventb-checker/master/.gitlab/ci/eventb-checker.yml'
+#   variables:
+#     EVENTB_MODEL_GLOB: "models/*.zip"
+#
+# Configuration variables:
+#   EVENTB_MODEL_GLOB        – Glob pattern for .zip model files (required)
+#   EVENTB_JAVA_VERSION      – Java version (default: "21")
+#   EVENTB_CHECKER_VERSION   – Release tag or "latest" (default: "latest")
+#   EVENTB_FORMAT            – Output format: "text" or "json" (default: "text")
+#   EVENTB_VERBOSE           – "true" to enable verbose output (default: "false")
+#   EVENTB_CHECKER_REPO      – GitHub repo for JAR download (default: "eventb-org/eventb-checker")
+
+variables:
+  EVENTB_JAVA_VERSION: "21"
+  EVENTB_CHECKER_VERSION: "latest"
+  EVENTB_FORMAT: "text"
+  EVENTB_VERBOSE: "false"
+  EVENTB_CHECKER_REPO: "evdenis/eventb-checker"
+
+# Hidden job — downloads release JAR and validates
+.eventb-validate-jar:
+  image: eclipse-temurin:${EVENTB_JAVA_VERSION}-jdk
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq jq curl > /dev/null
+    - |
+      repo="${EVENTB_CHECKER_REPO}"
+      if [ "${EVENTB_CHECKER_VERSION}" = "latest" ]; then
+        download_url=$(curl -fsSL "https://api.github.com/repos/${repo}/releases/latest" \
+          | jq -r '.assets[] | select(.name == "eventb-checker.jar") | .browser_download_url')
+      else
+        download_url=$(curl -fsSL "https://api.github.com/repos/${repo}/releases/tags/${EVENTB_CHECKER_VERSION}" \
+          | jq -r '.assets[] | select(.name == "eventb-checker.jar") | .browser_download_url')
+      fi
+      if [ -z "$download_url" ] || [ "$download_url" = "null" ]; then
+        echo "ERROR: Could not find eventb-checker.jar in release ${EVENTB_CHECKER_VERSION}"
+        exit 1
+      fi
+      curl -fsSL -o eventb-checker.jar "$download_url"
+  script:
+    - |
+      export CHECKER_CMD="java -jar eventb-checker.jar"
+      export MODEL_GLOB="${EVENTB_MODEL_GLOB}"
+      export FORMAT="${EVENTB_FORMAT}"
+      if [ "${EVENTB_VERBOSE}" = "true" ]; then
+        export VERBOSE_FLAG="--verbose"
+      else
+        export VERBOSE_FLAG=""
+      fi
+      curl -fsSL -o /tmp/validate-models.sh \
+        "https://raw.githubusercontent.com/${EVENTB_CHECKER_REPO}/master/.gitlab/scripts/validate-models.sh"
+      bash /tmp/validate-models.sh
+  artifacts:
+    when: always
+    paths:
+      - eventb-validation-report.json
+    reports:
+      junit: eventb-validation-results.xml
+
+# Hidden job — builds checker from source and validates
+.eventb-validate-src:
+  image: eclipse-temurin:${EVENTB_JAVA_VERSION}-jdk
+  variables:
+    GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq jq git > /dev/null
+    - git clone --depth 1 "https://github.com/${EVENTB_CHECKER_REPO}.git" /tmp/eventb-checker
+    - /tmp/eventb-checker/gradlew -p /tmp/eventb-checker installDist
+  script:
+    - |
+      export CHECKER_CMD="/tmp/eventb-checker/build/install/eventb-checker/bin/eventb-checker"
+      export MODEL_GLOB="${EVENTB_MODEL_GLOB}"
+      export FORMAT="${EVENTB_FORMAT}"
+      if [ "${EVENTB_VERBOSE}" = "true" ]; then
+        export VERBOSE_FLAG="--verbose"
+      else
+        export VERBOSE_FLAG=""
+      fi
+      bash /tmp/eventb-checker/.gitlab/scripts/validate-models.sh
+  artifacts:
+    when: always
+    paths:
+      - eventb-validation-report.json
+    reports:
+      junit: eventb-validation-results.xml
+
+# Concrete job — extends JAR-based validation, runs when EVENTB_MODEL_GLOB is set
+eventb-validate:
+  extends: .eventb-validate-jar
+  rules:
+    - if: $EVENTB_MODEL_GLOB

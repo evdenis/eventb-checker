@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Verify version consistency
+        run: |
+          tag="${{ github.ref_name }}"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag '$tag' does not match expected format vMAJOR.MINOR"
+            exit 1
+          fi
+          version="${tag#v}"
+          errors=0
+
+          gradle_version=$(grep -oP '^\s*version\s*=\s*"\K[^"]+' build.gradle.kts)
+          if [ "$gradle_version" != "$version" ]; then
+            echo "::error file=build.gradle.kts::Version mismatch: found '$gradle_version', expected '$version'"
+            errors=$((errors + 1))
+          fi
+
+          if ! grep -q "eventb-checker-${version}-all.jar" README.md; then
+            echo "::error file=README.md::JAR references not updated to version '$version'"
+            errors=$((errors + 1))
+          fi
+
+          if ! grep -q "evdenis/eventb-checker@${tag}" README.md; then
+            echo "::error file=README.md::Action tag not updated to '${tag}'"
+            errors=$((errors + 1))
+          fi
+
+          if [ "$errors" -gt 0 ]; then
+            echo "Found $errors version inconsistency(ies). Fix and re-tag."
+            exit 1
+          fi
+          echo "Version checks passed: tag=$tag version=$version"
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - run: ./gradlew shadowJar
+
+      - name: Create release and upload JAR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          jar_file=$(ls build/libs/eventb-checker-*-all.jar)
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes \
+            "$jar_file#eventb-checker.jar"

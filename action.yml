@@ -1,0 +1,76 @@
+name: "Event-B Model Validator"
+description: "Validate Event-B .zip models using eventb-checker"
+
+inputs:
+  model-path:
+    description: "Glob pattern for .zip model files to validate"
+    required: true
+  java-version:
+    description: "Java version to use"
+    required: false
+    default: "21"
+  checker-version:
+    description: 'Release tag to download (e.g. "v1.0.0"), or "latest"'
+    required: false
+    default: "latest"
+  verbose:
+    description: "Enable verbose output"
+    required: false
+    default: "false"
+  format:
+    description: "Output format: text or json"
+    required: false
+    default: "text"
+
+outputs:
+  valid:
+    description: "Whether all models passed validation (true/false)"
+    value: ${{ steps.validate.outputs.valid }}
+  error-count:
+    description: "Total number of errors across all models"
+    value: ${{ steps.validate.outputs.error-count }}
+  warning-count:
+    description: "Total number of warnings across all models"
+    value: ${{ steps.validate.outputs.warning-count }}
+  result-json:
+    description: "Compact JSON array of per-model validation results"
+    value: ${{ steps.validate.outputs.result-json }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v5
+      with:
+        distribution: temurin
+        java-version: ${{ inputs.java-version }}
+
+    - name: Download eventb-checker JAR
+      shell: bash
+      run: |
+        repo="evdenis/eventb-checker"
+        version="${{ inputs.checker-version }}"
+        if [ "$version" = "latest" ]; then
+          api_url="https://api.github.com/repos/$repo/releases/latest"
+        else
+          api_url="https://api.github.com/repos/$repo/releases/tags/$version"
+        fi
+        jar_url=$(curl -sfL "$api_url" | jq -r '.assets[] | select(.name | endswith(".jar")) | .browser_download_url')
+        if [ -z "$jar_url" ]; then
+          echo "::error::Failed to find JAR asset (version: $version) at https://github.com/$repo/releases"
+          exit 1
+        fi
+        curl -sfL -o eventb-checker.jar "$jar_url"
+        if [ ! -f eventb-checker.jar ]; then
+          echo "::error::Failed to download eventb-checker JAR from $jar_url"
+          exit 1
+        fi
+
+    - name: Validate models
+      id: validate
+      shell: bash
+      env:
+        CHECKER_CMD: "java -jar eventb-checker.jar"
+        MODEL_GLOB: ${{ inputs.model-path }}
+        FORMAT: ${{ inputs.format }}
+        VERBOSE_FLAG: ${{ inputs.verbose == 'true' && '--verbose' || '' }}
+      run: bash "${{ github.action_path }}/.github/scripts/validate-models.sh"

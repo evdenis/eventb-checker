@@ -1,0 +1,67 @@
+name: "Event-B Model Validator"
+description: "Validate Event-B .zip models using eventb-checker"
+
+inputs:
+  model-path:
+    description: "Glob pattern for .zip model files to validate"
+    required: true
+  java-version:
+    description: "Java version to use"
+    required: false
+    default: "21"
+  checker-version:
+    description: 'Release tag to download (e.g. "v1.0.0"), or "latest"'
+    required: false
+    default: "latest"
+  verbose:
+    description: "Enable verbose output"
+    required: false
+    default: "false"
+  format:
+    description: "Output format: text or json"
+    required: false
+    default: "text"
+
+outputs:
+  valid:
+    description: "Whether all models passed validation (true/false)"
+    value: ${{ steps.validate.outputs.valid }}
+  error-count:
+    description: "Total number of errors across all models"
+    value: ${{ steps.validate.outputs.error-count }}
+  warning-count:
+    description: "Total number of warnings across all models"
+    value: ${{ steps.validate.outputs.warning-count }}
+  result-json:
+    description: "Compact JSON array of per-model validation results"
+    value: ${{ steps.validate.outputs.result-json }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v5
+      with:
+        distribution: temurin
+        java-version: ${{ inputs.java-version }}
+
+    - name: Download eventb-checker JAR
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        repo="eventb-org/eventb-checker"
+        if [ "${{ inputs.checker-version }}" = "latest" ]; then
+          gh release download --repo "$repo" --pattern "*.jar" --output eventb-checker.jar
+        else
+          gh release download "${{ inputs.checker-version }}" --repo "$repo" --pattern "*.jar" --output eventb-checker.jar
+        fi
+
+    - name: Validate models
+      id: validate
+      shell: bash
+      env:
+        CHECKER_CMD: "java -jar eventb-checker.jar"
+        MODEL_GLOB: ${{ inputs.model-path }}
+        FORMAT: ${{ inputs.format }}
+        VERBOSE_FLAG: ${{ inputs.verbose == 'true' && '--verbose' || '' }}
+      run: bash "${{ github.action_path }}/.github/scripts/validate-models.sh"

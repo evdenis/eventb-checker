@@ -21,7 +21,7 @@ java {
 dependencies {
     implementation("de.hhu.stups:rodin-eventb-ast:3.8.0")
     implementation("de.hhu.stups:eventbstruct:2.15.4")
-    implementation("com.github.ajalt.clikt:clikt:4.2.2")
+    implementation("com.github.ajalt.clikt:clikt:5.1.0")
 
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:6.0.3")

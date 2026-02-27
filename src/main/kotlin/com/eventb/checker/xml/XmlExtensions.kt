@@ -1,6 +1,7 @@
 package com.eventb.checker.xml
 
 import com.eventb.checker.validation.ValidationError
+import com.eventb.checker.validation.ValidationRules
 import com.eventb.checker.validation.ValidationSeverity
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -44,6 +45,7 @@ internal fun Element.getAttrOrError(attrName: String, filePath: String, errors: 
                 element = getAttribute(XmlConstants.ATTR_LABEL).ifEmpty {
                     getAttribute(XmlConstants.ATTR_NAME)
                 },
+                ruleId = ValidationRules.MISSING_XML_ATTRIBUTE.id,
             ),
         )
     }

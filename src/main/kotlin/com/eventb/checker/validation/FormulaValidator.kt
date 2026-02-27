@@ -58,6 +58,7 @@ class FormulaValidator {
                 message = "Formula parse error: $problem",
                 element = check.elementLabel,
                 formula = check.formula,
+                ruleId = ValidationRules.FORMULA_PARSE_ERROR.id,
             )
         }
     }

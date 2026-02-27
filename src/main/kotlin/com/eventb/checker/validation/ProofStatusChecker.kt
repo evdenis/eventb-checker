@@ -44,6 +44,7 @@ class ProofStatusChecker {
                     severity = ValidationSeverity.WARNING,
                     message = "Proof obligation not discharged: ${po.name} (${po.confidence.name.lowercase()})",
                     element = po.name,
+                    ruleId = ValidationRules.UNDISCHARGED_PROOF.id,
                 ),
             )
         }
@@ -56,6 +57,7 @@ class ProofStatusChecker {
                     severity = ValidationSeverity.WARNING,
                     message = "Broken proof: ${po.name}",
                     element = po.name,
+                    ruleId = ValidationRules.BROKEN_PROOF.id,
                 ),
             )
         }
@@ -116,30 +118,24 @@ class ProofStatusChecker {
         val prMap = prData.associateBy { "${it.component}/${it.name}" }
         val psMap = psData.associateBy { "${it.component}/${it.name}" }
 
-        if (poData.isNotEmpty()) {
-            return poData.map { po ->
-                val key = "${po.component}/${po.name}"
-                val pr = prMap[key]
-                val ps = psMap[key]
-                ProofObligation(
-                    name = po.name,
-                    component = po.component,
-                    description = po.description,
-                    confidence = classifyConfidence(pr?.confidence),
-                    manual = ps?.manual ?: false,
-                    broken = ps?.broken ?: false,
-                )
+        data class ObligationSource(val name: String, val component: String, val description: String?, val confidence: Int?)
+
+        val sources = if (poData.isNotEmpty()) {
+            poData.map { po ->
+                val pr = prMap["${po.component}/${po.name}"]
+                ObligationSource(po.name, po.component, po.description, pr?.confidence)
             }
+        } else {
+            prData.map { pr -> ObligationSource(pr.name, pr.component, null, pr.confidence) }
         }
 
-        return prData.map { pr ->
-            val key = "${pr.component}/${pr.name}"
-            val ps = psMap[key]
+        return sources.map { src ->
+            val ps = psMap["${src.component}/${src.name}"]
             ProofObligation(
-                name = pr.name,
-                component = pr.component,
-                description = null,
-                confidence = classifyConfidence(pr.confidence),
+                name = src.name,
+                component = src.component,
+                description = src.description,
+                confidence = classifyConfidence(src.confidence),
                 manual = ps?.manual ?: false,
                 broken = ps?.broken ?: false,
             )
@@ -148,10 +144,15 @@ class ProofStatusChecker {
 
     private fun classifyConfidence(confidence: Int?): ProofConfidence = when {
         confidence == null -> ProofConfidence.UNATTEMPTED
-        confidence > 500 -> ProofConfidence.DISCHARGED
-        confidence in 101..500 -> ProofConfidence.REVIEWED
-        confidence in 0..100 -> ProofConfidence.PENDING
+        confidence > CONFIDENCE_DISCHARGED -> ProofConfidence.DISCHARGED
+        confidence >= CONFIDENCE_REVIEWED_MIN -> ProofConfidence.REVIEWED
+        confidence >= 0 -> ProofConfidence.PENDING
         else -> ProofConfidence.UNATTEMPTED
+    }
+
+    companion object {
+        private const val CONFIDENCE_DISCHARGED = 500
+        private const val CONFIDENCE_REVIEWED_MIN = 101
     }
 
     private fun parseXml(entry: ModelEntry, errors: MutableList<ValidationError>): org.w3c.dom.Document? {
@@ -162,6 +163,7 @@ class ProofStatusChecker {
                     filePath = entry.path,
                     severity = ValidationSeverity.WARNING,
                     message = if (errorDetail != null) "Failed to parse proof file: $errorDetail" else "Failed to parse proof file",
+                    ruleId = ValidationRules.PROOF_FILE_PARSE_ERROR.id,
                 ),
             )
         }

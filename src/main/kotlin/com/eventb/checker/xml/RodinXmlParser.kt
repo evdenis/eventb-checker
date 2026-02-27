@@ -3,6 +3,7 @@ package com.eventb.checker.xml
 import com.eventb.checker.model.Context
 import com.eventb.checker.model.Machine
 import com.eventb.checker.validation.ValidationError
+import com.eventb.checker.validation.ValidationRules
 import com.eventb.checker.validation.ValidationSeverity
 import java.io.InputStream
 
@@ -32,5 +33,6 @@ class RodinXmlParser {
         filePath = filePath,
         severity = ValidationSeverity.ERROR,
         message = if (detail != null) "Failed to parse XML: $detail" else "Failed to parse XML",
+        ruleId = ValidationRules.XML_PARSE_ERROR.id,
     )
 }

@@ -4,25 +4,10 @@ import com.eventb.checker.model.Context
 import com.eventb.checker.model.Event
 import com.eventb.checker.model.EventBProject
 import com.eventb.checker.model.Machine
-import org.eventb.core.ast.Assignment
 import org.eventb.core.ast.Formula
 import org.eventb.core.ast.FormulaFactory
 import org.eventb.core.ast.IParseResult
 import org.eventb.core.ast.ITypeEnvironmentBuilder
-
-data class TypeCheckedFormula(
-    val formula: Formula<*>,
-    val formulaText: String,
-    val filePath: String,
-    val elementLabel: String,
-    val kind: FormulaKind,
-)
-
-data class TypeCheckResult(val errors: List<ValidationError>, val checkedFormulas: List<TypeCheckedFormula>)
-
-fun List<TypeCheckedFormula>.extractAssignedIdentifiers(): Set<String> = filter { it.kind == FormulaKind.ASSIGNMENT }
-    .flatMap { (it.formula as Assignment).assignedIdentifiers.map { id -> id.name } }
-    .toSet()
 
 class TypeChecker(private val ff: FormulaFactory = FormulaFactory.getDefault()) {
 
@@ -77,6 +62,7 @@ class TypeChecker(private val ff: FormulaFactory = FormulaFactory.getDefault()) 
                     severity = ValidationSeverity.WARNING,
                     message = "Circular EXTENDS dependency detected involving context '${ctx.name}'",
                     element = ctx.name,
+                    ruleId = ValidationRules.CIRCULAR_EXTENDS.id,
                 ),
             )
             return ff.makeTypeEnvironment()
@@ -123,6 +109,7 @@ class TypeChecker(private val ff: FormulaFactory = FormulaFactory.getDefault()) 
                     severity = ValidationSeverity.WARNING,
                     message = "Circular REFINES dependency detected involving machine '${machine.name}'",
                     element = machine.name,
+                    ruleId = ValidationRules.CIRCULAR_REFINES.id,
                 ),
             )
             return
@@ -227,6 +214,7 @@ class TypeChecker(private val ff: FormulaFactory = FormulaFactory.getDefault()) 
                         message = "Type error: $problem",
                         element = elementLabel,
                         formula = formula,
+                        ruleId = ValidationRules.TYPE_ERROR.id,
                     ),
                 )
             }

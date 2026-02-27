@@ -50,8 +50,8 @@ java -jar build/libs/eventb-checker-1.0.0-all.jar /path/to/model-directory
 
 | Option | Description |
 |--------|-------------|
-| `--verbose`, `-v` | Show formula text in error output |
 | `--format`, `-f` | Output format: `text` (default), `json`, or `sarif` |
+| `--show-info` | Include INFO-severity findings in output (suppressed by default) |
 | `--proofs`, `-p` | Check proof status from `.bpr`/`.bpo`/`.bps` files |
 
 ### JSON Output Schema
@@ -113,12 +113,27 @@ Files:    1 machine(s), 1 context(s)
 Formulas: 5 checked
 Errors:   0
 Warnings: 0
+Info:     0
+
+RESULT: VALID
+```
+
+With `--show-info`:
+
+```
+=== Event-B Model Validation Report ===
+
+Files:    1 machine(s), 1 context(s)
+Formulas: 5 checked
+Errors:   0
+Warnings: 0
 Info:     1
 
 RESULT: VALID (with warnings)
 
 --- Counter.bum ---
   INFO : [inv2] Well-definedness condition: y ≠ 0
+         formula: x / y
 ```
 
 ## GitHub CI Integration
@@ -133,12 +148,14 @@ steps:
       model-path: "models/*.zip"
 ```
 
+Results are automatically uploaded to [GitHub Code Scanning](https://docs.github.com/en/code-security/code-scanning) via SARIF, showing findings inline on pull requests and in the Security tab.
+
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `model-path` | yes | — | Glob pattern for `.zip` files |
 | `java-version` | no | `"21"` | Java version |
 | `checker-version` | no | `"latest"` | Release tag or `"latest"` |
-| `verbose` | no | `"false"` | Enable verbose output |
+| `show-info` | no | `"false"` | Include INFO-severity findings |
 
 ## GitLab CI Integration
 
@@ -161,8 +178,7 @@ This creates an `eventb-validate` job that downloads the release JAR, runs valid
 | `EVENTB_MODEL_GLOB` | yes | — | Glob pattern for `.zip` files |
 | `EVENTB_JAVA_VERSION` | no | `"21"` | Java version |
 | `EVENTB_CHECKER_VERSION` | no | `"latest"` | Release tag or `"latest"` |
-| `EVENTB_FORMAT` | no | `"text"` | Output format: `text`, `json`, or `sarif` |
-| `EVENTB_VERBOSE` | no | `"false"` | Enable verbose output |
+| `EVENTB_SHOW_INFO` | no | `"false"` | Include INFO-severity findings |
 | `EVENTB_CHECKER_REPO` | no | `"evdenis/eventb-checker"` | GitHub repo for JAR download |
 
 ### Build from Source
@@ -191,7 +207,7 @@ eventb-validate:
   extends: .eventb-validate-jar
   variables:
     EVENTB_MODEL_GLOB: "models/*.zip"
-    EVENTB_VERBOSE: "true"
+    EVENTB_SHOW_INFO: "true"
   only:
     - merge_requests
     - master

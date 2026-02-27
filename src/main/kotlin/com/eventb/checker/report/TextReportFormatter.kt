@@ -3,7 +3,7 @@ package com.eventb.checker.report
 import com.eventb.checker.validation.ValidationResult
 import com.eventb.checker.validation.ValidationSeverity
 
-class TextReportFormatter(private val verbose: Boolean = false) : ReportFormatter {
+class TextReportFormatter : ReportFormatter {
 
     override fun format(result: ValidationResult): String {
         val sb = StringBuilder()
@@ -50,7 +50,7 @@ class TextReportFormatter(private val verbose: Boolean = false) : ReportFormatte
                 }
                 val elementPart = error.element?.let { " [$it]" } ?: ""
                 sb.appendLine("  $severity:$elementPart ${error.message}")
-                if (verbose && error.formula != null) {
+                if (error.formula != null) {
                     sb.appendLine("         formula: ${error.formula}")
                 }
             }

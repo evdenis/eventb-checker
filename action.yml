@@ -13,6 +13,10 @@ inputs:
     description: "Include INFO-severity findings (e.g. well-definedness notes)"
     required: false
     default: "false"
+  proofs:
+    description: "Check proof status from .bpr/.bpo/.bps files"
+    required: false
+    default: "false"
 
 outputs:
   valid:
@@ -55,6 +59,7 @@ runs:
         CHECKER_CMD: "java -jar eventb-checker.jar"
         MODEL_GLOB: ${{ inputs.model-path }}
         SHOW_INFO_FLAG: ${{ inputs.show-info == 'true' && '--show-info' || '' }}
+        PROOFS_FLAG: ${{ inputs.proofs == 'true' && '--proofs' || '' }}
       run: bash "${{ github.action_path }}/.github/scripts/validate-models.sh"
 
     - name: Upload SARIF to Code Scanning

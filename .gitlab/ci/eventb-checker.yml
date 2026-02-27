@@ -12,12 +12,14 @@
 #   EVENTB_JAVA_VERSION      – Java version (default: "21")
 #   EVENTB_CHECKER_VERSION   – Release tag or "latest" (default: "latest")
 #   EVENTB_SHOW_INFO         – "true" to include INFO-severity findings (default: "false")
+#   EVENTB_PROOFS            – "true" to check proof status from .bpr/.bpo/.bps files (default: "false")
 #   EVENTB_CHECKER_REPO      – GitHub repo for JAR download (default: "eventb-org/eventb-checker")
 
 variables:
   EVENTB_JAVA_VERSION: "21"
   EVENTB_CHECKER_VERSION: "latest"
   EVENTB_SHOW_INFO: "false"
+  EVENTB_PROOFS: "false"
   EVENTB_CHECKER_REPO: "evdenis/eventb-checker"
 
 # Hidden job — downloads release JAR and validates
@@ -48,6 +50,11 @@ variables:
       else
         export SHOW_INFO_FLAG=""
       fi
+      if [ "${EVENTB_PROOFS}" = "true" ]; then
+        export PROOFS_FLAG="--proofs"
+      else
+        export PROOFS_FLAG=""
+      fi
       curl -fsSL -o /tmp/validate-models.sh \
         "https://raw.githubusercontent.com/${EVENTB_CHECKER_REPO}/master/.gitlab/scripts/validate-models.sh"
       bash /tmp/validate-models.sh
@@ -76,6 +83,11 @@ variables:
         export SHOW_INFO_FLAG="--show-info"
       else
         export SHOW_INFO_FLAG=""
+      fi
+      if [ "${EVENTB_PROOFS}" = "true" ]; then
+        export PROOFS_FLAG="--proofs"
+      else
+        export PROOFS_FLAG=""
       fi
       bash /tmp/eventb-checker/.gitlab/scripts/validate-models.sh
   artifacts:

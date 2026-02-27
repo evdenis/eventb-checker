@@ -1,34 +1,35 @@
 #!/usr/bin/env bash
 # GitLab-compatible validation loop for Event-B models.
 #
-# Generates JUnit XML (for MR widget) and a structured JSON report.
+# Runs the checker once per model with --format sarif, derives all
+# outputs from the SARIF JSON, and produces JUnit XML for MR widgets
+# plus a merged SARIF file.
 #
 # Required env vars:
-#   CHECKER_CMD   – command to invoke the checker (e.g. "java -jar eventb-checker.jar")
-#   MODEL_GLOB    – glob pattern for .zip model files
-#   FORMAT        – "text" or "json"
+#   CHECKER_CMD      – command to invoke the checker (e.g. "java -jar eventb-checker.jar")
+#   MODEL_GLOB       – glob pattern for .zip model files
 #
 # Optional env vars:
-#   VERBOSE_FLAG  – "--verbose" or "" (default: "")
+#   SHOW_INFO_FLAG   – "--show-info" or "" (default: "")
 #
 # Outputs:
 #   eventb-validation-results.xml  – JUnit XML with one <testcase> per model
 #   eventb-validation-report.json  – structured JSON results
+#   eventb-checker-results.sarif   – merged SARIF file
 
 set -euo pipefail
 
 : "${CHECKER_CMD:?CHECKER_CMD is required}"
 : "${MODEL_GLOB:?MODEL_GLOB is required}"
-: "${FORMAT:=text}"
-: "${VERBOSE_FLAG:=}"
+: "${SHOW_INFO_FLAG:=}"
 
 all_valid=true
 total_errors=0
 total_warnings=0
-results="[]"
 failures=0
 model_count=0
 testcases=""
+merged_runs="[]"
 
 for zip in $MODEL_GLOB; do
   if [ ! -f "$zip" ]; then
@@ -38,11 +39,11 @@ for zip in $MODEL_GLOB; do
   model_name=$(basename "$zip")
   echo "--- Validating $zip ---"
 
-  # Run with JSON to get structured data; capture exit code
-  json_output=$($CHECKER_CMD --format json "$zip" 2>/tmp/checker_stderr) && checker_rc=0 || checker_rc=$?
+  # Single run with SARIF output
+  sarif_output=$($CHECKER_CMD --format sarif $SHOW_INFO_FLAG "$zip" 2>/tmp/checker_stderr) && checker_rc=0 || checker_rc=$?
 
   # If checker crashed (exit code 2) or output is not valid JSON, handle gracefully
-  if [ "$checker_rc" -eq 2 ] || ! echo "$json_output" | jq empty 2>/dev/null; then
+  if [ "$checker_rc" -eq 2 ] || ! echo "$sarif_output" | jq empty 2>/dev/null; then
     stderr_msg=$(cat /tmp/checker_stderr 2>/dev/null || echo "Unknown error")
     echo "ERROR: Infrastructure error validating $zip: $stderr_msg"
     all_valid=false
@@ -54,21 +55,20 @@ for zip in $MODEL_GLOB; do
     continue
   fi
 
-  # Extract fields via jq
-  model_valid=$(echo "$json_output" | jq -r '.valid')
-  model_errors=$(echo "$json_output" | jq -r '.summary.errorCount')
-  model_warnings=$(echo "$json_output" | jq -r '.summary.warningCount')
+  # Extract counts from SARIF results
+  model_errors=$(echo "$sarif_output" | jq '[.runs[0].results[] | select(.level == "error")] | length')
+  model_warnings=$(echo "$sarif_output" | jq '[.runs[0].results[] | select(.level == "warning")] | length')
 
-  # Accumulate totals
   total_errors=$((total_errors + model_errors))
   total_warnings=$((total_warnings + model_warnings))
-  results=$(echo "$results" | jq --argjson obj "$json_output" '. + [$obj]')
 
-  if [ "$model_valid" != "true" ]; then
+  if [ "$model_errors" -gt 0 ]; then
     all_valid=false
     failures=$((failures + 1))
     # Collect error messages for JUnit failure element
-    error_messages=$(echo "$json_output" | jq -r '.errors[] | select(.severity == "ERROR") | "\(.file): \(.message)"')
+    error_messages=$(echo "$sarif_output" | jq -r '
+      .runs[0].results[] | select(.level == "error") |
+      "\(.locations[0].physicalLocation.artifactLocation.uri): \(.message.text)"')
     testcases="${testcases}    <testcase name=\"${model_name}\" classname=\"eventb-validation\">
       <failure message=\"${model_errors} error(s), ${model_warnings} warning(s)\">${error_messages}</failure>
     </testcase>
@@ -78,12 +78,8 @@ for zip in $MODEL_GLOB; do
 "
   fi
 
-  # Display output in requested format
-  if [ "$FORMAT" = "json" ]; then
-    echo "$json_output" | jq .
-  else
-    $CHECKER_CMD $VERBOSE_FLAG "$zip" || true
-  fi
+  # Merge runs into combined SARIF
+  merged_runs=$(echo "$merged_runs" | jq --argjson run "$(echo "$sarif_output" | jq '.runs[0]')" '. + [$run]')
 
   echo ""
 done
@@ -95,14 +91,20 @@ cat > eventb-validation-results.xml <<XMLEOF
 ${testcases}</testsuite>
 XMLEOF
 
-# Write structured JSON report
+# Write structured JSON report (for backward compatibility)
 jq -n \
   --argjson valid "$all_valid" \
   --argjson errors "$total_errors" \
   --argjson warnings "$total_warnings" \
-  --argjson results "$results" \
-  '{valid: $valid, errorCount: $errors, warningCount: $warnings, results: $results}' \
+  '{valid: $valid, errorCount: $errors, warningCount: $warnings}' \
   > eventb-validation-report.json
+
+# Write merged SARIF file
+jq -n \
+  --arg schema "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json" \
+  --argjson runs "$merged_runs" \
+  '{"$schema": $schema, "version": "2.1.0", "runs": $runs}' \
+  > eventb-checker-results.sarif
 
 echo "=== Summary ==="
 echo "Models checked: $model_count"

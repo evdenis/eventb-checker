@@ -36,7 +36,8 @@ class JsonReportFormatter : ReportFormatter {
                     .put("severity", error.severity.name)
                     .put("message", error.message)
                     .put("element", error.element ?: JSONObject.NULL)
-                    .put("formula", error.formula ?: JSONObject.NULL),
+                    .put("formula", error.formula ?: JSONObject.NULL)
+                    .put("ruleId", error.ruleId ?: JSONObject.NULL),
             )
         }
 

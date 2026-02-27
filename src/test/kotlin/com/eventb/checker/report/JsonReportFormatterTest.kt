@@ -182,6 +182,34 @@ class JsonReportFormatterTest {
     }
 
     @Test
+    fun `ruleId is included in JSON output`() {
+        val result = ValidationResult(
+            errors = listOf(
+                ValidationError(
+                    filePath = "Counter.bum",
+                    severity = ValidationSeverity.ERROR,
+                    message = "Formula parse error",
+                    element = "inv1",
+                    formula = "x ==== y",
+                    ruleId = "EB005",
+                ),
+                ValidationError(
+                    filePath = "Counter.bum",
+                    severity = ValidationSeverity.WARNING,
+                    message = "No ruleId here",
+                ),
+            ),
+            summary = ValidationSummary(1, 0, 5, 1, 1),
+        )
+
+        val json = parse(result)
+        val errors = json.getJSONArray("errors")
+
+        assertThat(errors.getJSONObject(0).getString("ruleId")).isEqualTo("EB005")
+        assertThat(errors.getJSONObject(1).isNull("ruleId")).isTrue()
+    }
+
+    @Test
     fun `output parses as valid JSON with correct structure`() {
         val result = ValidationResult(
             errors = listOf(

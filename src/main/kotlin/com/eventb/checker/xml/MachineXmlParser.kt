@@ -11,6 +11,7 @@ import com.eventb.checker.model.Variable
 import com.eventb.checker.model.Variant
 import com.eventb.checker.model.Witness
 import com.eventb.checker.validation.ValidationError
+import com.eventb.checker.validation.ValidationRules
 import com.eventb.checker.validation.ValidationSeverity
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -29,6 +30,7 @@ class MachineXmlParser {
                     filePath = filePath,
                     severity = ValidationSeverity.ERROR,
                     message = "Expected root element '${XmlConstants.MACHINE_FILE}' but found '${root.tagName}'",
+                    ruleId = ValidationRules.UNEXPECTED_XML_ROOT.id,
                 ),
             )
         }

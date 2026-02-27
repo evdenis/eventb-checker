@@ -6,14 +6,11 @@ class IdentifierAnalyzer {
 
     fun analyze(project: EventBProject, checkedFormulas: List<TypeCheckedFormula>): List<ValidationError> {
         val findings = mutableListOf<ValidationError>()
+        val formulasByFile = checkedFormulas.groupBy { it.filePath }
 
         for (machine in project.machines) {
-            val machineFormulas = checkedFormulas.filter { it.filePath == machine.filePath }
-
-            val referencedIdentifiers = machineFormulas
-                .flatMap { it.formula.freeIdentifiers.map { id -> id.name } }
-                .toSet()
-
+            val machineFormulas = formulasByFile[machine.filePath].orEmpty()
+            val referencedIdentifiers = machineFormulas.referencedIdentifierNames()
             val assignedIdentifiers = machineFormulas.extractAssignedIdentifiers()
 
             for (variable in machine.variables) {
@@ -24,19 +21,17 @@ class IdentifierAnalyzer {
                             severity = ValidationSeverity.WARNING,
                             message = "Dead variable: '${variable.identifier}' is declared but never referenced in any formula",
                             element = variable.label,
+                            ruleId = ValidationRules.DEAD_VARIABLE.id,
                         ),
                     )
-                }
-            }
-
-            for (variable in machine.variables) {
-                if (variable.identifier in referencedIdentifiers && variable.identifier !in assignedIdentifiers) {
+                } else if (variable.identifier !in assignedIdentifiers) {
                     findings.add(
                         ValidationError(
                             filePath = machine.filePath,
                             severity = ValidationSeverity.INFO,
                             message = "Unmodified variable: '${variable.identifier}' is never assigned by any event action",
                             element = variable.label,
+                            ruleId = ValidationRules.UNMODIFIED_VARIABLE.id,
                         ),
                     )
                 }
@@ -44,12 +39,8 @@ class IdentifierAnalyzer {
         }
 
         for (ctx in project.contexts) {
-            val contextFormulas = checkedFormulas.filter { it.filePath == ctx.filePath }
-
-            val referencedIdentifiers = contextFormulas
-                .flatMap { it.formula.freeIdentifiers.map { id -> id.name } }
-                .toSet()
-
+            val contextFormulas = formulasByFile[ctx.filePath].orEmpty()
+            val referencedIdentifiers = contextFormulas.referencedIdentifierNames()
             val carrierSetNames = ctx.carrierSets.map { it.identifier }.toSet()
 
             for (constant in ctx.constants) {
@@ -60,6 +51,7 @@ class IdentifierAnalyzer {
                             severity = ValidationSeverity.WARNING,
                             message = "Dead constant: '${constant.identifier}' is declared but never referenced in any axiom",
                             element = constant.label,
+                            ruleId = ValidationRules.DEAD_CONSTANT.id,
                         ),
                     )
                 }

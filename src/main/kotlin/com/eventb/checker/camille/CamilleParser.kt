@@ -15,6 +15,7 @@ import com.eventb.checker.model.Variable
 import com.eventb.checker.model.Variant
 import com.eventb.checker.model.Witness
 import com.eventb.checker.validation.ValidationError
+import com.eventb.checker.validation.ValidationRules
 import com.eventb.checker.validation.ValidationSeverity
 import de.be4.eventb.core.parser.BException
 import de.be4.eventb.core.parser.EventBParser
@@ -120,6 +121,7 @@ class CamilleParser {
                         filePath = filePath,
                         severity = ValidationSeverity.ERROR,
                         message = "Camille parse error: ${e.message}",
+                        ruleId = ValidationRules.CAMILLE_PARSE_ERROR.id,
                     ),
                 ),
             )
@@ -144,6 +146,7 @@ class CamilleParser {
                         filePath = filePath,
                         severity = ValidationSeverity.ERROR,
                         message = "Camille parse error: unknown parse unit type",
+                        ruleId = ValidationRules.CAMILLE_PARSE_ERROR.id,
                     ),
                 ),
             )

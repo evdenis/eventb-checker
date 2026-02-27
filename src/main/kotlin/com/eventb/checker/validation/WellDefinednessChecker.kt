@@ -19,6 +19,7 @@ class WellDefinednessChecker {
                     message = "Well-definedness condition: $wdPredicate",
                     element = tcf.elementLabel,
                     formula = tcf.formulaText,
+                    ruleId = ValidationRules.WELL_DEFINEDNESS.id,
                 ),
             )
         }

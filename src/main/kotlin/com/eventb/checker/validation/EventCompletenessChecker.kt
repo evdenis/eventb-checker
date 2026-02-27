@@ -32,6 +32,7 @@ class EventCompletenessChecker {
                             severity = ValidationSeverity.WARNING,
                             message = "INITIALISATION does not assign variable '${variable.identifier}'",
                             element = initEvent.label,
+                            ruleId = ValidationRules.INCOMPLETE_INITIALISATION.id,
                         ),
                     )
                 }

@@ -5,6 +5,7 @@ import com.eventb.checker.model.CarrierSet
 import com.eventb.checker.model.Constant
 import com.eventb.checker.model.Context
 import com.eventb.checker.validation.ValidationError
+import com.eventb.checker.validation.ValidationRules
 import com.eventb.checker.validation.ValidationSeverity
 import org.w3c.dom.Document
 
@@ -22,6 +23,7 @@ class ContextXmlParser {
                     filePath = filePath,
                     severity = ValidationSeverity.ERROR,
                     message = "Expected root element '${XmlConstants.CONTEXT_FILE}' but found '${root.tagName}'",
+                    ruleId = ValidationRules.UNEXPECTED_XML_ROOT.id,
                 ),
             )
         }

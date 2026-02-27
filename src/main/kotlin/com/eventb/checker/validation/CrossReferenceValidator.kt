@@ -39,6 +39,7 @@ class CrossReferenceValidator {
                         severity = ValidationSeverity.ERROR,
                         message = "$clause target $kind '$target' not found in project",
                         element = element,
+                        ruleId = ValidationRules.CROSS_REFERENCE_NOT_FOUND.id,
                     ),
                 )
             }

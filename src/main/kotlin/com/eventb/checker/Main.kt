@@ -1,6 +1,7 @@
 package com.eventb.checker
 
 import com.eventb.checker.report.JsonReportFormatter
+import com.eventb.checker.report.SarifReportFormatter
 import com.eventb.checker.report.TextReportFormatter
 import com.eventb.checker.validation.ProjectValidator
 import com.github.ajalt.clikt.core.CliktCommand
@@ -21,7 +22,7 @@ class CheckCommand :
     private val modelPath by argument(help = "Path to a .zip archive, directory, or .eventb file")
     private val verbose by option("--verbose", "-v", help = "Show formula text in error output").flag()
     private val format by option("--format", "-f", help = "Output format")
-        .choice("text", "json").default("text")
+        .choice("text", "json", "sarif").default("text")
     private val proofs by option("--proofs", "-p", help = "Check proof status from .bpr/.bpo/.bps files").flag()
 
     override fun run() {
@@ -38,6 +39,7 @@ class CheckCommand :
 
         val formatter = when (format) {
             "json" -> JsonReportFormatter()
+            "sarif" -> SarifReportFormatter()
             else -> TextReportFormatter(verbose)
         }
         echo(formatter.format(result))

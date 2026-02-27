@@ -22,11 +22,11 @@ dependencies {
     implementation("de.hhu.stups:rodin-eventb-ast:3.8.0")
     implementation("de.hhu.stups:eventbstruct:2.15.4")
     implementation("com.github.ajalt.clikt:clikt:5.1.0")
+    implementation("org.json:json:20251224")
 
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:6.0.3")
     testImplementation("org.assertj:assertj-core:3.27.7")
-    implementation("org.json:json:20251224")
 }
 
 application {
@@ -53,9 +53,18 @@ spotless {
     }
 }
 
+tasks.jar {
+    manifest {
+        attributes("Implementation-Version" to project.version)
+    }
+}
+
 tasks.shadowJar {
     archiveClassifier.set("all")
     manifest {
-        attributes("Main-Class" to "com.eventb.checker.MainKt")
+        attributes(
+            "Main-Class" to "com.eventb.checker.MainKt",
+            "Implementation-Version" to project.version,
+        )
     }
 }

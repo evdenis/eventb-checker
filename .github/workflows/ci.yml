@@ -43,7 +43,7 @@ on:
         type: boolean
         default: false
       format:
-        description: "Output format: text or json"
+        description: "Output format: text, json, or sarif"
         required: false
         type: string
         default: "text"

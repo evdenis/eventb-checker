@@ -37,16 +37,11 @@ on:
         required: false
         type: string
         default: "master"
-      verbose:
-        description: "Enable verbose output"
+      show-info:
+        description: "Include INFO-severity findings in output"
         required: false
         type: boolean
         default: false
-      format:
-        description: "Output format: text, json, or sarif"
-        required: false
-        type: string
-        default: "text"
     outputs:
       valid:
         description: "Whether all models passed validation (true/false)"
@@ -112,6 +107,5 @@ jobs:
         env:
           CHECKER_CMD: "_checker/build/install/eventb-checker/bin/eventb-checker"
           MODEL_GLOB: ${{ inputs.model-path }}
-          FORMAT: ${{ inputs.format }}
-          VERBOSE_FLAG: ${{ inputs.verbose == true && '--verbose' || '' }}
+          SHOW_INFO_FLAG: ${{ inputs.show-info == true && '--show-info' || '' }}
         run: bash _checker/.github/scripts/validate-models.sh

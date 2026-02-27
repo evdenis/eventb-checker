@@ -20,9 +20,9 @@ class CheckCommand :
     ) {
     override fun help(context: Context) = "Validate an Event-B model (.zip archive, directory, or .eventb file)"
     private val modelPath by argument(help = "Path to a .zip archive, directory, or .eventb file")
-    private val verbose by option("--verbose", "-v", help = "Show formula text in error output").flag()
     private val format by option("--format", "-f", help = "Output format")
         .choice("text", "json", "sarif").default("text")
+    private val showInfo by option("--show-info", help = "Include INFO-severity findings in output").flag()
     private val proofs by option("--proofs", "-p", help = "Check proof status from .bpr/.bpo/.bps files").flag()
 
     override fun run() {
@@ -37,12 +37,14 @@ class CheckCommand :
             exitProcess(2)
         }
 
+        val output = if (showInfo) result else result.withoutInfo()
+
         val formatter = when (format) {
             "json" -> JsonReportFormatter()
             "sarif" -> SarifReportFormatter()
-            else -> TextReportFormatter(verbose)
+            else -> TextReportFormatter()
         }
-        echo(formatter.format(result))
+        echo(formatter.format(output))
 
         if (!result.isValid) {
             exitProcess(1)

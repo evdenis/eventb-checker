@@ -5,10 +5,6 @@ inputs:
   model-path:
     description: "Glob pattern for .zip model files to validate"
     required: true
-  java-version:
-    description: "Java version to use"
-    required: false
-    default: "21"
   checker-version:
     description: 'Release tag to download (e.g. "v1.0.0"), or "latest"'
     required: false
@@ -38,7 +34,7 @@ runs:
     - uses: actions/setup-java@v5
       with:
         distribution: temurin
-        java-version: ${{ inputs.java-version }}
+        java-version: "21"
 
     - name: Download eventb-checker JAR
       shell: bash

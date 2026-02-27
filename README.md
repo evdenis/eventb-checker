@@ -153,7 +153,6 @@ Results are automatically uploaded to [GitHub Code Scanning](https://docs.github
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `model-path` | yes | — | Glob pattern for `.zip` files |
-| `java-version` | no | `"21"` | Java version |
 | `checker-version` | no | `"latest"` | Release tag or `"latest"` |
 | `show-info` | no | `"false"` | Include INFO-severity findings |
 

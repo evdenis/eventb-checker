@@ -1,5 +1,7 @@
 package com.eventb.checker.validation
 
+import com.eventb.checker.model.ProofStatusSummary
+
 enum class ValidationSeverity { ERROR, WARNING, INFO }
 
 data class ValidationError(
@@ -8,6 +10,7 @@ data class ValidationError(
     val message: String,
     val element: String? = null,
     val formula: String? = null,
+    val ruleId: String? = null,
 )
 
 data class ValidationSummary(
@@ -17,7 +20,7 @@ data class ValidationSummary(
     val errorCount: Int,
     val warningCount: Int,
     val infoCount: Int = 0,
-    val proofSummary: com.eventb.checker.model.ProofStatusSummary? = null,
+    val proofSummary: ProofStatusSummary? = null,
 )
 
 data class ValidationResult(val errors: List<ValidationError>, val summary: ValidationSummary) {

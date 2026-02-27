@@ -13,14 +13,10 @@ inputs:
     description: 'Release tag to download (e.g. "v1.0.0"), or "latest"'
     required: false
     default: "latest"
-  verbose:
-    description: "Enable verbose output"
+  show-info:
+    description: "Include INFO-severity findings (e.g. well-definedness notes)"
     required: false
     default: "false"
-  format:
-    description: "Output format: text, json, or sarif"
-    required: false
-    default: "text"
 
 outputs:
   valid:
@@ -32,9 +28,9 @@ outputs:
   warning-count:
     description: "Total number of warnings across all models"
     value: ${{ steps.validate.outputs.warning-count }}
-  result-json:
-    description: "Compact JSON array of per-model validation results"
-    value: ${{ steps.validate.outputs.result-json }}
+  sarif-file:
+    description: "Path to the merged SARIF results file"
+    value: ${{ steps.validate.outputs.sarif-file }}
 
 runs:
   using: composite
@@ -71,6 +67,11 @@ runs:
       env:
         CHECKER_CMD: "java -jar eventb-checker.jar"
         MODEL_GLOB: ${{ inputs.model-path }}
-        FORMAT: ${{ inputs.format }}
-        VERBOSE_FLAG: ${{ inputs.verbose == 'true' && '--verbose' || '' }}
+        SHOW_INFO_FLAG: ${{ inputs.show-info == 'true' && '--show-info' || '' }}
       run: bash "${{ github.action_path }}/.github/scripts/validate-models.sh"
+
+    - name: Upload SARIF to Code Scanning
+      if: always()
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        sarif_file: eventb-checker-results.sarif

@@ -4,7 +4,7 @@
 # Required env vars:
 #   CHECKER_CMD   – command to invoke the checker (e.g. "java -jar eventb-checker.jar")
 #   MODEL_GLOB    – glob pattern for .zip model files
-#   FORMAT        – "text" or "json"
+#   FORMAT        – "text", "json", or "sarif"
 #
 # Optional env vars:
 #   VERBOSE_FLAG  – "--verbose" or "" (default: "")
@@ -67,6 +67,8 @@ for zip in $MODEL_GLOB; do
   # Display output in requested format
   if [ "$FORMAT" = "json" ]; then
     echo "$json_output" | jq .
+  elif [ "$FORMAT" = "sarif" ]; then
+    $CHECKER_CMD --format sarif $VERBOSE_FLAG "$zip" || true
   else
     $CHECKER_CMD $VERBOSE_FLAG "$zip" || true
   fi

@@ -51,7 +51,7 @@ java -jar build/libs/eventb-checker-1.0.0-all.jar /path/to/model-directory
 | Option | Description |
 |--------|-------------|
 | `--verbose`, `-v` | Show formula text in error output |
-| `--format`, `-f` | Output format: `text` (default) or `json` |
+| `--format`, `-f` | Output format: `text` (default), `json`, or `sarif` |
 | `--proofs`, `-p` | Check proof status from `.bpr`/`.bpo`/`.bps` files |
 
 ### JSON Output Schema
@@ -83,13 +83,18 @@ When using `--format json`, the output has the following structure:
       "severity": "ERROR",
       "message": "Parse error in invariant",
       "element": "inv1",
-      "formula": "x ==== y"
+      "formula": "x ==== y",
+      "ruleId": "EB005"
     }
   ]
 }
 ```
 
-`element` and `formula` are `null` when not applicable. `severity` is one of `ERROR`, `WARNING`, or `INFO`. `proofSummary` is only present when `--proofs` is used.
+`element`, `formula`, and `ruleId` are `null` when not applicable. `severity` is one of `ERROR`, `WARNING`, or `INFO`. `proofSummary` is only present when `--proofs` is used.
+
+### SARIF Output
+
+When using `--format sarif`, the output follows the [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html) standard. This enables integration with GitHub Code Scanning, VS Code SARIF Viewer, and other tools that consume SARIF. Each finding includes a rule ID (e.g., `EB005` for formula parse errors) mapped to the `tool.driver.rules` array.
 
 ### Exit Codes
 
@@ -156,7 +161,7 @@ This creates an `eventb-validate` job that downloads the release JAR, runs valid
 | `EVENTB_MODEL_GLOB` | yes | — | Glob pattern for `.zip` files |
 | `EVENTB_JAVA_VERSION` | no | `"21"` | Java version |
 | `EVENTB_CHECKER_VERSION` | no | `"latest"` | Release tag or `"latest"` |
-| `EVENTB_FORMAT` | no | `"text"` | Output format: `text` or `json` |
+| `EVENTB_FORMAT` | no | `"text"` | Output format: `text`, `json`, or `sarif` |
 | `EVENTB_VERBOSE` | no | `"false"` | Enable verbose output |
 | `EVENTB_CHECKER_REPO` | no | `"evdenis/eventb-checker"` | GitHub repo for JAR download |
 

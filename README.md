@@ -155,6 +155,7 @@ Results are automatically uploaded to [GitHub Code Scanning](https://docs.github
 | `model-path` | yes | — | Glob pattern for `.zip` files |
 | `checker-version` | no | `"latest"` | Release tag or `"latest"` |
 | `show-info` | no | `"false"` | Include INFO-severity findings |
+| `proofs` | no | `"false"` | Check proof status from `.bpr`/`.bpo`/`.bps` files |
 
 ## GitLab CI Integration
 
@@ -178,6 +179,7 @@ This creates an `eventb-validate` job that downloads the release JAR, runs valid
 | `EVENTB_JAVA_VERSION` | no | `"21"` | Java version |
 | `EVENTB_CHECKER_VERSION` | no | `"latest"` | Release tag or `"latest"` |
 | `EVENTB_SHOW_INFO` | no | `"false"` | Include INFO-severity findings |
+| `EVENTB_PROOFS` | no | `"false"` | Check proof status from `.bpr`/`.bpo`/`.bps` files |
 | `EVENTB_CHECKER_REPO` | no | `"evdenis/eventb-checker"` | GitHub repo for JAR download |
 
 ### Build from Source

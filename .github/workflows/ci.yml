@@ -42,6 +42,11 @@ on:
         required: false
         type: boolean
         default: false
+      proofs:
+        description: "Check proof status from .bpr/.bpo/.bps files"
+        required: false
+        type: boolean
+        default: false
     outputs:
       valid:
         description: "Whether all models passed validation (true/false)"
@@ -108,4 +113,5 @@ jobs:
           CHECKER_CMD: "_checker/build/install/eventb-checker/bin/eventb-checker"
           MODEL_GLOB: ${{ inputs.model-path }}
           SHOW_INFO_FLAG: ${{ inputs.show-info == true && '--show-info' || '' }}
+          PROOFS_FLAG: ${{ inputs.proofs == true && '--proofs' || '' }}
         run: bash _checker/.github/scripts/validate-models.sh

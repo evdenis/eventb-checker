@@ -11,15 +11,13 @@
 #   EVENTB_MODEL_GLOB        – Glob pattern for .zip model files (required)
 #   EVENTB_JAVA_VERSION      – Java version (default: "21")
 #   EVENTB_CHECKER_VERSION   – Release tag or "latest" (default: "latest")
-#   EVENTB_FORMAT            – Output format: "text" or "json" (default: "text")
-#   EVENTB_VERBOSE           – "true" to enable verbose output (default: "false")
+#   EVENTB_SHOW_INFO         – "true" to include INFO-severity findings (default: "false")
 #   EVENTB_CHECKER_REPO      – GitHub repo for JAR download (default: "evdenis/eventb-checker")
 
 variables:
   EVENTB_JAVA_VERSION: "21"
   EVENTB_CHECKER_VERSION: "latest"
-  EVENTB_FORMAT: "text"
-  EVENTB_VERBOSE: "false"
+  EVENTB_SHOW_INFO: "false"
   EVENTB_CHECKER_REPO: "evdenis/eventb-checker"
 
 # Hidden job — downloads release JAR and validates
@@ -45,11 +43,10 @@ variables:
     - |
       export CHECKER_CMD="java -jar eventb-checker.jar"
       export MODEL_GLOB="${EVENTB_MODEL_GLOB}"
-      export FORMAT="${EVENTB_FORMAT}"
-      if [ "${EVENTB_VERBOSE}" = "true" ]; then
-        export VERBOSE_FLAG="--verbose"
+      if [ "${EVENTB_SHOW_INFO}" = "true" ]; then
+        export SHOW_INFO_FLAG="--show-info"
       else
-        export VERBOSE_FLAG=""
+        export SHOW_INFO_FLAG=""
       fi
       curl -fsSL -o /tmp/validate-models.sh \
         "https://raw.githubusercontent.com/${EVENTB_CHECKER_REPO}/master/.gitlab/scripts/validate-models.sh"
@@ -58,6 +55,7 @@ variables:
     when: always
     paths:
       - eventb-validation-report.json
+      - eventb-checker-results.sarif
     reports:
       junit: eventb-validation-results.xml
 
@@ -74,17 +72,17 @@ variables:
     - |
       export CHECKER_CMD="/tmp/eventb-checker/build/install/eventb-checker/bin/eventb-checker"
       export MODEL_GLOB="${EVENTB_MODEL_GLOB}"
-      export FORMAT="${EVENTB_FORMAT}"
-      if [ "${EVENTB_VERBOSE}" = "true" ]; then
-        export VERBOSE_FLAG="--verbose"
+      if [ "${EVENTB_SHOW_INFO}" = "true" ]; then
+        export SHOW_INFO_FLAG="--show-info"
       else
-        export VERBOSE_FLAG=""
+        export SHOW_INFO_FLAG=""
       fi
       bash /tmp/eventb-checker/.gitlab/scripts/validate-models.sh
   artifacts:
     when: always
     paths:
       - eventb-validation-report.json
+      - eventb-checker-results.sarif
     reports:
       junit: eventb-validation-results.xml
 

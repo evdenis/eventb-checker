@@ -1,24 +1,20 @@
 package com.eventb.checker.validation
 
+import com.eventb.checker.TestModelBuilders.checkedFormulas
 import com.eventb.checker.TestModelBuilders.context
 import com.eventb.checker.TestModelBuilders.machine
 import com.eventb.checker.TestModelBuilders.project
 import com.eventb.checker.model.Axiom
 import com.eventb.checker.model.CarrierSet
 import com.eventb.checker.model.Constant
-import com.eventb.checker.model.EventBProject
 import com.eventb.checker.model.Invariant
 import com.eventb.checker.model.Variable
 import org.assertj.core.api.Assertions.assertThat
-import org.eventb.core.ast.FormulaFactory
 import org.junit.jupiter.api.Test
 
 class WellDefinednessCheckerTest {
 
-    private val typeChecker = TypeChecker(FormulaFactory.getDefault())
     private val wdChecker = WellDefinednessChecker()
-
-    private fun checkedFormulasFor(project: EventBProject): List<TypeCheckedFormula> = typeChecker.checkProjectFull(project).checkedFormulas
 
     @Test
     fun `trivial WD produces no report`() {
@@ -32,7 +28,7 @@ class WellDefinednessCheckerTest {
             ),
         )
 
-        val findings = wdChecker.check(checkedFormulasFor(project))
+        val findings = wdChecker.check(checkedFormulas(project))
 
         assertThat(findings).isEmpty()
     }
@@ -53,11 +49,10 @@ class WellDefinednessCheckerTest {
             ),
         )
 
-        val findings = wdChecker.check(checkedFormulasFor(project))
+        val findings = wdChecker.check(checkedFormulas(project))
 
-        assertThat(findings).isNotEmpty
-        assertThat(findings).allMatch { it.severity == ValidationSeverity.INFO }
-        assertThat(findings).anyMatch { it.message.contains("Well-definedness condition") }
+        assertThat(findings).allSatisfy { assertThat(it.severity).isEqualTo(ValidationSeverity.INFO) }
+        assertThat(findings).filteredOn { it.message.contains("Well-definedness condition") }.isNotEmpty
     }
 
     @Test
@@ -86,11 +81,10 @@ class WellDefinednessCheckerTest {
             ),
         )
 
-        val findings = wdChecker.check(checkedFormulasFor(project))
+        val findings = wdChecker.check(checkedFormulas(project))
 
-        assertThat(findings).isNotEmpty
-        assertThat(findings).allMatch { it.severity == ValidationSeverity.INFO }
-        assertThat(findings).anyMatch { it.message.contains("Well-definedness condition") }
+        assertThat(findings).allSatisfy { assertThat(it.severity).isEqualTo(ValidationSeverity.INFO) }
+        assertThat(findings).filteredOn { it.message.contains("Well-definedness condition") }.isNotEmpty
     }
 
     @Test
@@ -109,7 +103,7 @@ class WellDefinednessCheckerTest {
             ),
         )
 
-        val findings = wdChecker.check(checkedFormulasFor(project))
+        val findings = wdChecker.check(checkedFormulas(project))
 
         assertThat(findings).isEmpty()
     }

@@ -1,5 +1,6 @@
 package com.eventb.checker.validation
 
+import com.eventb.checker.TestModelBuilders.checkedFormulas
 import com.eventb.checker.TestModelBuilders.event
 import com.eventb.checker.TestModelBuilders.machine
 import com.eventb.checker.TestModelBuilders.project
@@ -8,18 +9,13 @@ import com.eventb.checker.model.EventBProject
 import com.eventb.checker.model.Invariant
 import com.eventb.checker.model.Variable
 import org.assertj.core.api.Assertions.assertThat
-import org.eventb.core.ast.FormulaFactory
 import org.junit.jupiter.api.Test
 
 class EventCompletenessCheckerTest {
 
-    private val typeChecker = TypeChecker(FormulaFactory.getDefault())
     private val checker = EventCompletenessChecker()
 
-    private fun checkProject(project: EventBProject): List<ValidationError> {
-        val checkedFormulas = typeChecker.checkProjectFull(project).checkedFormulas
-        return checker.check(project, checkedFormulas)
-    }
+    private fun checkProject(project: EventBProject): List<ValidationError> = checker.check(project, checkedFormulas(project))
 
     @Test
     fun `complete INITIALISATION produces no warnings`() {

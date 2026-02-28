@@ -3,7 +3,11 @@ package com.eventb.checker.integration
 import com.eventb.checker.validation.ProjectValidator
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 import java.io.File
+import java.util.stream.Stream
 
 /**
  * Integration tests using real Rodin-exported Event-B models from
@@ -20,63 +24,27 @@ class RealModelTest {
         return File(url.toURI()).absolutePath
     }
 
-    @Test
-    fun `binary search model validates`() {
-        val result = validator.validate(resourceZipPath("binary-search.zip"))
-
-        assertThat(result.isValid)
-            .describedAs("Validation errors: %s", result.errors)
-            .isTrue()
-        assertThat(result.summary.machineCount).isEqualTo(4)
-        assertThat(result.summary.contextCount).isEqualTo(1)
-        assertThat(result.summary.formulaCount).isGreaterThan(0)
+    companion object {
+        @JvmStatic
+        fun validModels(): Stream<Arguments> = Stream.of(
+            Arguments.of("binary-search.zip", 4, 1),
+            Arguments.of("cars-on-bridge.zip", 4, 3),
+            Arguments.of("file-system.zip", 1, 1),
+            Arguments.of("traffic-light.zip", 3, 1),
+            Arguments.of("base-model.zip", 1, 1),
+        )
     }
 
-    @Test
-    fun `cars on bridge model validates`() {
-        val result = validator.validate(resourceZipPath("cars-on-bridge.zip"))
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("validModels")
+    fun `model validates`(zipName: String, machineCount: Int, contextCount: Int) {
+        val result = validator.validate(resourceZipPath(zipName))
 
         assertThat(result.isValid)
             .describedAs("Validation errors: %s", result.errors)
             .isTrue()
-        assertThat(result.summary.machineCount).isEqualTo(4)
-        assertThat(result.summary.contextCount).isEqualTo(3)
-        assertThat(result.summary.formulaCount).isGreaterThan(0)
-    }
-
-    @Test
-    fun `file system model validates`() {
-        val result = validator.validate(resourceZipPath("file-system.zip"))
-
-        assertThat(result.isValid)
-            .describedAs("Validation errors: %s", result.errors)
-            .isTrue()
-        assertThat(result.summary.machineCount).isEqualTo(1)
-        assertThat(result.summary.contextCount).isEqualTo(1)
-        assertThat(result.summary.formulaCount).isGreaterThan(0)
-    }
-
-    @Test
-    fun `traffic light model validates`() {
-        val result = validator.validate(resourceZipPath("traffic-light.zip"))
-
-        assertThat(result.isValid)
-            .describedAs("Validation errors: %s", result.errors)
-            .isTrue()
-        assertThat(result.summary.machineCount).isEqualTo(3)
-        assertThat(result.summary.contextCount).isEqualTo(1)
-        assertThat(result.summary.formulaCount).isGreaterThan(0)
-    }
-
-    @Test
-    fun `base model validates`() {
-        val result = validator.validate(resourceZipPath("base-model.zip"))
-
-        assertThat(result.isValid)
-            .describedAs("Validation errors: %s", result.errors)
-            .isTrue()
-        assertThat(result.summary.machineCount).isEqualTo(1)
-        assertThat(result.summary.contextCount).isEqualTo(1)
+        assertThat(result.summary.machineCount).isEqualTo(machineCount)
+        assertThat(result.summary.contextCount).isEqualTo(contextCount)
         assertThat(result.summary.formulaCount).isGreaterThan(0)
     }
 

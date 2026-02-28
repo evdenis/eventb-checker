@@ -10,32 +10,20 @@ class ProofStatusCheckerTest {
 
     private val checker = ProofStatusChecker()
 
-    private fun bprXml(vararg proofs: String): String {
-        val proofElements = proofs.joinToString("\n")
+    private fun wrapXml(rootElement: String, vararg children: String): String {
+        val body = children.joinToString("\n")
         return """<?xml version="1.0" encoding="UTF-8"?>
-            <org.eventb.core.prFile version="1">
-            $proofElements
-            </org.eventb.core.prFile>
+            <$rootElement version="1">
+            $body
+            </$rootElement>
         """.trimIndent()
     }
 
-    private fun bpoXml(vararg sequents: String): String {
-        val seqElements = sequents.joinToString("\n")
-        return """<?xml version="1.0" encoding="UTF-8"?>
-            <org.eventb.core.poFile version="1">
-            $seqElements
-            </org.eventb.core.poFile>
-        """.trimIndent()
-    }
+    private fun bprXml(vararg proofs: String) = wrapXml("org.eventb.core.prFile", *proofs)
 
-    private fun bpsXml(vararg statuses: String): String {
-        val statusElements = statuses.joinToString("\n")
-        return """<?xml version="1.0" encoding="UTF-8"?>
-            <org.eventb.core.psFile version="1">
-            $statusElements
-            </org.eventb.core.psFile>
-        """.trimIndent()
-    }
+    private fun bpoXml(vararg sequents: String) = wrapXml("org.eventb.core.poFile", *sequents)
+
+    private fun bpsXml(vararg statuses: String) = wrapXml("org.eventb.core.psFile", *statuses)
 
     private fun entry(path: String, xml: String) = ModelEntry(path, xml.toByteArray())
 
@@ -166,9 +154,9 @@ class ProofStatusCheckerTest {
             contents(proofFiles = listOf(entry("project/Bad.bpr", "not xml <<<"))),
         )
 
-        assertThat(result.errors).anyMatch {
-            it.severity == ValidationSeverity.WARNING && it.message.contains("Failed to parse proof file")
-        }
+        assertThat(result.errors)
+            .filteredOn { it.severity == ValidationSeverity.WARNING && it.message.contains("Failed to parse proof file") }
+            .singleElement()
         assertThat(result.summary.total).isEqualTo(0)
     }
 
@@ -209,11 +197,11 @@ class ProofStatusCheckerTest {
 
         val result = checker.check(contents(proofFiles = listOf(entry("project/M0.bpr", bpr))))
 
-        assertThat(result.errors).anyMatch {
-            it.severity == ValidationSeverity.WARNING &&
-                it.message.contains("not discharged") &&
-                it.element == "inc/inv1/INV"
-        }
+        assertThat(result.errors)
+            .filteredOn {
+                it.severity == ValidationSeverity.WARNING && it.message.contains("not discharged") && it.element == "inc/inv1/INV"
+            }
+            .singleElement()
     }
 
     @Test

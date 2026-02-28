@@ -1,5 +1,6 @@
 package com.eventb.checker.validation
 
+import com.eventb.checker.TestModelBuilders.checkedFormulas
 import com.eventb.checker.TestModelBuilders.context
 import com.eventb.checker.TestModelBuilders.event
 import com.eventb.checker.TestModelBuilders.machine
@@ -14,18 +15,13 @@ import com.eventb.checker.model.Invariant
 import com.eventb.checker.model.Parameter
 import com.eventb.checker.model.Variable
 import org.assertj.core.api.Assertions.assertThat
-import org.eventb.core.ast.FormulaFactory
 import org.junit.jupiter.api.Test
 
 class IdentifierAnalyzerTest {
 
-    private val typeChecker = TypeChecker(FormulaFactory.getDefault())
     private val analyzer = IdentifierAnalyzer()
 
-    private fun analyzeProject(project: EventBProject): List<ValidationError> {
-        val checkedFormulas = typeChecker.checkProjectFull(project).checkedFormulas
-        return analyzer.analyze(project, checkedFormulas)
-    }
+    private fun analyzeProject(project: EventBProject): List<ValidationError> = analyzer.analyze(project, checkedFormulas(project))
 
     @Test
     fun `no warnings for used variable`() {
@@ -74,9 +70,11 @@ class IdentifierAnalyzerTest {
 
         val findings = analyzeProject(project)
 
-        assertThat(findings).anyMatch {
-            it.severity == ValidationSeverity.WARNING && it.message.contains("Dead variable") && it.message.contains("unused")
-        }
+        assertThat(findings)
+            .filteredOn {
+                it.severity == ValidationSeverity.WARNING && it.message.contains("Dead variable") && it.message.contains("unused")
+            }
+            .singleElement()
     }
 
     @Test
@@ -94,9 +92,11 @@ class IdentifierAnalyzerTest {
 
         val findings = analyzeProject(project)
 
-        assertThat(findings).anyMatch {
-            it.severity == ValidationSeverity.WARNING && it.message.contains("Dead constant") && it.message.contains("unused")
-        }
+        assertThat(findings)
+            .filteredOn {
+                it.severity == ValidationSeverity.WARNING && it.message.contains("Dead constant") && it.message.contains("unused")
+            }
+            .singleElement()
     }
 
     @Test
@@ -113,9 +113,9 @@ class IdentifierAnalyzerTest {
 
         val findings = analyzeProject(project)
 
-        assertThat(findings).anyMatch {
-            it.severity == ValidationSeverity.INFO && it.message.contains("Unmodified variable") && it.message.contains("x")
-        }
+        assertThat(findings)
+            .filteredOn { it.severity == ValidationSeverity.INFO && it.message.contains("Unmodified variable") && it.message.contains("x") }
+            .singleElement()
     }
 
     @Test
@@ -138,9 +138,9 @@ class IdentifierAnalyzerTest {
 
         val findings = analyzeProject(project)
 
-        assertThat(findings).noneMatch {
-            it.message.contains("Unmodified variable") && it.message.contains("'n'")
-        }
+        assertThat(findings)
+            .filteredOn { it.message.contains("Unmodified variable") && it.message.contains("'n'") }
+            .isEmpty()
     }
 
     @Test
@@ -157,9 +157,9 @@ class IdentifierAnalyzerTest {
 
         val findings = analyzeProject(project)
 
-        assertThat(findings).noneMatch {
-            it.message.contains("Dead constant") && it.message.contains("S")
-        }
+        assertThat(findings)
+            .filteredOn { it.message.contains("Dead constant") && it.message.contains("S") }
+            .isEmpty()
     }
 
     @Test
@@ -191,9 +191,9 @@ class IdentifierAnalyzerTest {
 
         val findings = analyzeProject(project)
 
-        assertThat(findings).noneMatch {
-            it.message.contains("Dead variable") && it.message.contains("p")
-        }
+        assertThat(findings)
+            .filteredOn { it.message.contains("Dead variable") && it.message.contains("p") }
+            .isEmpty()
     }
 
     @Test

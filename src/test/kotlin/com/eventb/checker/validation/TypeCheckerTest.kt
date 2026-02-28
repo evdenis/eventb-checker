@@ -93,9 +93,8 @@ class TypeCheckerTest {
 
         val errors = typeChecker.checkProject(project)
 
-        assertThat(errors).isNotEmpty
-        assertThat(errors).allMatch { it.severity == ValidationSeverity.WARNING }
-        assertThat(errors).anyMatch { it.message.contains("Type error") }
+        assertThat(errors).allSatisfy { assertThat(it.severity).isEqualTo(ValidationSeverity.WARNING) }
+        assertThat(errors).filteredOn { it.message.contains("Type error") }.isNotEmpty
     }
 
     @Test
@@ -175,8 +174,8 @@ class TypeCheckerTest {
 
         val errors = typeChecker.checkProject(project)
 
+        assertThat(errors).allSatisfy { assertThat(it.severity).isEqualTo(ValidationSeverity.WARNING) }
         assertThat(errors).isNotEmpty
-        assertThat(errors).allMatch { it.severity == ValidationSeverity.WARNING }
     }
 
     @Test

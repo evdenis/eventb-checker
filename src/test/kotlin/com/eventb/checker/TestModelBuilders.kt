@@ -15,6 +15,8 @@ import com.eventb.checker.model.Parameter
 import com.eventb.checker.model.Variable
 import com.eventb.checker.model.Variant
 import com.eventb.checker.model.Witness
+import com.eventb.checker.validation.TypeCheckedFormula
+import com.eventb.checker.validation.TypeChecker
 
 object TestModelBuilders {
 
@@ -58,6 +60,8 @@ object TestModelBuilders {
         constants = constants,
         axioms = axioms,
     )
+
+    fun checkedFormulas(project: EventBProject): List<TypeCheckedFormula> = TypeChecker().checkProjectFull(project).checkedFormulas
 
     fun event(
         label: String,

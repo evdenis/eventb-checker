@@ -68,3 +68,12 @@ tasks.shadowJar {
         )
     }
 }
+
+tasks.register<Exec>("setupGitHooks") {
+    description = "Configure git to use .githooks/ directory for hooks"
+    group = "setup"
+    commandLine("git", "config", "core.hooksPath", ".githooks")
+    doLast {
+        println("Git hooks configured: core.hooksPath = .githooks")
+    }
+}

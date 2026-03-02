@@ -222,6 +222,23 @@ eventb-validate:
 - [JSON-java](https://github.com/stleary/JSON-java) — JSON output formatting
 - [JUnit 5](https://junit.org/junit5/) + [AssertJ](https://assertj.github.io/doc/) — Testing
 
+## Development
+
+### Git Hooks Setup
+
+The repository includes pre-commit and pre-push hooks in `.githooks/`. To enable them:
+
+```bash
+./gradlew setupGitHooks
+# or: git config core.hooksPath .githooks
+```
+
+**Pre-commit** — When committing `.kt` or `.kts` files, automatically runs `spotlessApply` to format them, re-stages the formatted files, and verifies with `spotlessCheck`.
+
+**Pre-push** — When pushing a `v*` tag, validates that the tag format is `vMAJOR.MINOR` and that `build.gradle.kts` and `README.md` reference the matching version. This catches version inconsistencies before they reach CI.
+
+To bypass hooks for a specific operation, use `--no-verify`.
+
 ## Acknowledgements
 
 The test suite includes real-world Event-B models from the following repositories:

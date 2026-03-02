@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Pre-push hook: validate version consistency when pushing v* tags.
+# Regular branch pushes are silently skipped.
+
+while read -r _ local_ref _ _; do
+    # Only act on v* tags
+    case "$local_ref" in
+        refs/tags/v*) ;;
+        *) continue ;;
+    esac
+
+    tag="${local_ref#refs/tags/}"
+    echo "Pre-push: checking version consistency for tag '$tag'..."
+    "$(git rev-parse --show-toplevel)/scripts/check-version.sh" "$tag"
+done

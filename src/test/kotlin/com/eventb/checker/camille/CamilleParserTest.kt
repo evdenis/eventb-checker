@@ -22,7 +22,7 @@ class CamilleParserTest {
         assertThat(result.context).isNull()
         assertThat(result.errors).isEmpty()
         assertThat(result.machine!!.name).isEqualTo("MyMachine")
-        assertThat(result.machine!!.filePath).isEqualTo("project/MyMachine.eventb")
+        assertThat(result.machine.filePath).isEqualTo("project/MyMachine.eventb")
     }
 
     @Test
@@ -268,7 +268,7 @@ class CamilleParserTest {
         assertThat(result.machine).isNull()
         assertThat(result.errors).isEmpty()
         assertThat(result.context!!.name).isEqualTo("MyCtx")
-        assertThat(result.context!!.filePath).isEqualTo("project/MyCtx.eventb")
+        assertThat(result.context.filePath).isEqualTo("project/MyCtx.eventb")
     }
 
     @Test
@@ -418,9 +418,9 @@ class CamilleParserTest {
         assertThat(result.errors).isEmpty()
         assertThat(result.context).isNotNull
         assertThat(result.context!!.name).isEqualTo("Ctx")
-        assertThat(result.context!!.carrierSets).hasSize(1)
-        assertThat(result.context!!.constants).hasSize(1)
-        assertThat(result.context!!.axioms).hasSize(1)
+        assertThat(result.context.carrierSets).hasSize(1)
+        assertThat(result.context.constants).hasSize(1)
+        assertThat(result.context.axioms).hasSize(1)
     }
 
     @Test
@@ -450,8 +450,8 @@ class CamilleParserTest {
         assertThat(result.errors).isEmpty()
         assertThat(result.machine).isNotNull
         assertThat(result.machine!!.name).isEqualTo("M")
-        assertThat(result.machine!!.variables).hasSize(1)
-        assertThat(result.machine!!.events).hasSize(2)
+        assertThat(result.machine.variables).hasSize(1)
+        assertThat(result.machine.events).hasSize(2)
     }
 
     @Test

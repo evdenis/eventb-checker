@@ -287,8 +287,8 @@ class EndToEndTest {
         assertThat(result.isValid).isTrue()
         assertThat(result.summary.proofSummary).isNotNull
         assertThat(result.summary.proofSummary!!.total).isEqualTo(2)
-        assertThat(result.summary.proofSummary!!.discharged).isEqualTo(1)
-        assertThat(result.summary.proofSummary!!.pending).isEqualTo(1)
+        assertThat(result.summary.proofSummary.discharged).isEqualTo(1)
+        assertThat(result.summary.proofSummary.pending).isEqualTo(1)
         assertThat(result.errors).anyMatch {
             it.severity == ValidationSeverity.WARNING && it.message.contains("not discharged")
         }

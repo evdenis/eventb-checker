@@ -33,15 +33,12 @@ class ProjectValidator(private val checkProofs: Boolean = false) {
         val formulaErrors = formulaChecks.flatMap { formulaValidator.validate(it) }
         allErrors.addAll(formulaErrors)
 
-        if (formulaErrors.isEmpty()) {
-            val typeCheckResult = typeChecker.checkProjectFull(project)
-            allErrors.addAll(typeCheckResult.errors)
+        val typeCheckResult = typeChecker.checkProjectFull(project)
+        allErrors.addAll(typeCheckResult.errors)
 
-            val checkedFormulas = typeCheckResult.checkedFormulas
-            allErrors.addAll(wdChecker.check(checkedFormulas))
-            allErrors.addAll(identifierAnalyzer.analyze(project, checkedFormulas))
-            allErrors.addAll(eventCompletenessChecker.check(project, checkedFormulas))
-        }
+        allErrors.addAll(wdChecker.check(typeCheckResult.checkedFormulas))
+        allErrors.addAll(identifierAnalyzer.analyze(project, typeCheckResult.parsedFormulas))
+        allErrors.addAll(eventCompletenessChecker.check(project, typeCheckResult.parsedFormulas))
 
         val crossRefErrors = crossRefValidator.validate(project)
         allErrors.addAll(crossRefErrors)

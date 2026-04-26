@@ -1,8 +1,8 @@
 package com.eventb.checker.validation
 
-import com.eventb.checker.TestModelBuilders.checkedFormulas
 import com.eventb.checker.TestModelBuilders.event
 import com.eventb.checker.TestModelBuilders.machine
+import com.eventb.checker.TestModelBuilders.parsedFormulas
 import com.eventb.checker.TestModelBuilders.project
 import com.eventb.checker.model.Action
 import com.eventb.checker.model.EventBProject
@@ -15,7 +15,7 @@ class EventCompletenessCheckerTest {
 
     private val checker = EventCompletenessChecker()
 
-    private fun checkProject(project: EventBProject): List<ValidationError> = checker.check(project, checkedFormulas(project))
+    private fun checkProject(project: EventBProject): List<ValidationError> = checker.check(project, parsedFormulas(project))
 
     @Test
     fun `complete INITIALISATION produces no warnings`() {

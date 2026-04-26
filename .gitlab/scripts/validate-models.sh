@@ -38,6 +38,16 @@ on_model_crash() {
   echo "ERROR: Infrastructure error validating $1: $2"
 }
 
+on_no_models_matched() {
+  local glob="$1"
+  model_count=1
+  testcases="${testcases}    <testcase name=\"configuration\" classname=\"eventb-validation\">
+      <failure message=\"No model files matched\">MODEL_GLOB '${glob}' matched no files</failure>
+    </testcase>
+"
+  echo "ERROR: No model files matched '$glob'"
+}
+
 on_model_result() {
   local zip="$1"
   local sarif_output="$2"

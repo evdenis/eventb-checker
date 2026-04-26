@@ -17,6 +17,7 @@
 #   on_model_start  "$zip"                          – called before each model
 #   on_model_result "$zip" "$sarif_output" "$model_errors" "$model_warnings"  – called after each model
 #   on_model_crash  "$zip" "$stderr_msg"            – called on checker crash
+#   on_no_models_matched "$MODEL_GLOB"              – called when the glob matches no files
 #   on_model_end                                    – called after each model's output
 #   on_complete "$all_valid" "$total_errors" "$total_warnings" "$failures" "$merged_runs"
 #                                                   – called after the loop finishes
@@ -33,6 +34,7 @@ validate_models() {
   local total_errors=0
   local total_warnings=0
   local failures=0
+  local matched_models=0
   local sarif_tmpdir
   sarif_tmpdir=$(mktemp -d)
   local run_index=0
@@ -41,6 +43,7 @@ validate_models() {
     if [ ! -f "$zip" ]; then
       continue
     fi
+    matched_models=$((matched_models + 1))
     on_model_start "$zip"
 
     # Single run with SARIF output
@@ -80,6 +83,12 @@ validate_models() {
 
     on_model_end
   done
+
+  if [ "$matched_models" -eq 0 ]; then
+    on_no_models_matched "$MODEL_GLOB"
+    all_valid=false
+    failures=$((failures + 1))
+  fi
 
   # Write merged SARIF file from individual run files
   if compgen -G "$sarif_tmpdir/run_*.json" > /dev/null; then

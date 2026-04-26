@@ -23,6 +23,10 @@ on_model_crash() {
   echo "::error::Infrastructure error validating $1: $2"
 }
 
+on_no_models_matched() {
+  echo "::error::No model files matched '$1'"
+}
+
 on_model_result() {
   local sarif_output="$2"
   # Emit GitHub annotations from SARIF results

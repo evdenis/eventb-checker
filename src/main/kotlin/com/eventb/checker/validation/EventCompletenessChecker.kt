@@ -8,7 +8,7 @@ class EventCompletenessChecker {
         private const val INITIALISATION = "INITIALISATION"
     }
 
-    fun check(project: EventBProject, checkedFormulas: List<TypeCheckedFormula>): List<ValidationError> {
+    fun check(project: EventBProject, parsedFormulas: List<ParsedFormula>): List<ValidationError> {
         val findings = mutableListOf<ValidationError>()
 
         for (machine in project.machines) {
@@ -16,7 +16,7 @@ class EventCompletenessChecker {
 
             val initEvent = machine.events.find { it.label == INITIALISATION } ?: continue
 
-            val machineInitFormulas = checkedFormulas.filter {
+            val machineInitFormulas = parsedFormulas.filter {
                 it.filePath == machine.filePath &&
                     it.kind == FormulaKind.ASSIGNMENT &&
                     it.elementLabel.startsWith("$INITIALISATION/")

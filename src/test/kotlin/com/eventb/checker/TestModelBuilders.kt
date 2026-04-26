@@ -15,6 +15,7 @@ import com.eventb.checker.model.Parameter
 import com.eventb.checker.model.Variable
 import com.eventb.checker.model.Variant
 import com.eventb.checker.model.Witness
+import com.eventb.checker.validation.ParsedFormula
 import com.eventb.checker.validation.TypeCheckedFormula
 import com.eventb.checker.validation.TypeChecker
 
@@ -60,10 +61,14 @@ object TestModelBuilders {
         axioms = axioms,
     )
 
+    fun parsedFormulas(project: EventBProject): List<ParsedFormula> = TypeChecker().checkProjectFull(project).parsedFormulas
+
     fun checkedFormulas(project: EventBProject): List<TypeCheckedFormula> = TypeChecker().checkProjectFull(project).checkedFormulas
 
     fun event(
         label: String,
+        extended: Boolean = false,
+        refinesEvents: List<String> = emptyList(),
         parameters: List<Parameter> = emptyList(),
         guards: List<Guard> = emptyList(),
         actions: List<Action> = emptyList(),
@@ -71,8 +76,8 @@ object TestModelBuilders {
     ) = Event(
         label = label,
         convergence = Convergence.ORDINARY,
-        extended = false,
-        refinesEvents = emptyList(),
+        extended = extended,
+        refinesEvents = refinesEvents,
         parameters = parameters,
         guards = guards,
         actions = actions,

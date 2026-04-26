@@ -28,7 +28,7 @@ class TypeCheckerTest {
                 context(
                     "C1",
                     carrierSets = listOf(CarrierSet("S", "S")),
-                    axioms = listOf(Axiom("axm1", "x ∈ S", false)),
+                    axioms = listOf(Axiom("axm1", "finite(S)", false)),
                 ),
             ),
         )
@@ -162,7 +162,7 @@ class TypeCheckerTest {
     }
 
     @Test
-    fun `untyped identifier produces warning`() {
+    fun `undeclared identifier produces error`() {
         val project = project(
             machines = listOf(
                 machine(
@@ -174,8 +174,36 @@ class TypeCheckerTest {
 
         val errors = typeChecker.checkProject(project)
 
-        assertThat(errors).allSatisfy { assertThat(it.severity).isEqualTo(ValidationSeverity.WARNING) }
-        assertThat(errors).isNotEmpty
+        assertThat(errors)
+            .filteredOn { it.severity == ValidationSeverity.ERROR && it.ruleId == ValidationRules.UNDECLARED_IDENTIFIER.id }
+            .hasSize(2)
+        assertThat(errors.map { it.message }).anyMatch { it.contains("'x'") }
+        assertThat(errors.map { it.message }).anyMatch { it.contains("'y'") }
+    }
+
+    @Test
+    fun `undeclared assignment target produces error`() {
+        val project = project(
+            machines = listOf(
+                machine(
+                    "M1",
+                    events = listOf(
+                        event(
+                            "update",
+                            actions = listOf(Action("act1", "x ≔ 0")),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val errors = typeChecker.checkProject(project)
+
+        assertThat(errors).anyMatch {
+            it.severity == ValidationSeverity.ERROR &&
+                it.ruleId == ValidationRules.UNDECLARED_IDENTIFIER.id &&
+                it.message.contains("'x'")
+        }
     }
 
     @Test
@@ -202,6 +230,213 @@ class TypeCheckerTest {
         val errors = typeChecker.checkProject(project)
 
         assertThat(errors).isEmpty()
+    }
+
+    @Test
+    fun `refinement inherits seen context declarations`() {
+        val project = project(
+            contexts = listOf(
+                context(
+                    "C",
+                    carrierSets = listOf(CarrierSet("S", "S")),
+                    constants = listOf(Constant("c", "c")),
+                    axioms = listOf(Axiom("axm1", "c ∈ S", false)),
+                ),
+            ),
+            machines = listOf(
+                machine(
+                    "Base",
+                    seesContexts = listOf("C"),
+                    variables = listOf(Variable("x", "x")),
+                    invariants = listOf(Invariant("inv1", "x ∈ S ∧ c ∈ S", false)),
+                ),
+                machine(
+                    "Refined",
+                    refinesMachine = "Base",
+                    variables = listOf(Variable("y", "y")),
+                    invariants = listOf(
+                        Invariant("inv1", "y ∈ S", false),
+                        Invariant("inv2", "c ∈ S", false),
+                    ),
+                ),
+            ),
+        )
+
+        val errors = typeChecker.checkProject(project)
+
+        assertThat(errors).isEmpty()
+    }
+
+    @Test
+    fun `extended event inherits refined event parameters`() {
+        val project = project(
+            machines = listOf(
+                machine(
+                    "Base",
+                    variables = listOf(Variable("bytes", "bytes")),
+                    invariants = listOf(Invariant("inv1", "bytes ∈ ℕ ⇸ ℕ", false)),
+                    events = listOf(
+                        event(
+                            "split",
+                            parameters = listOf(Parameter("left_size", "left_size")),
+                            guards = listOf(Guard("grd1", "left_size ∈ ℕ1", false)),
+                        ),
+                    ),
+                ),
+                machine(
+                    "Refined",
+                    refinesMachine = "Base",
+                    variables = listOf(Variable("bytes", "bytes")),
+                    invariants = listOf(Invariant("inv1", "bytes ∈ ℕ ⇸ ℕ", false)),
+                    events = listOf(
+                        event(
+                            "split",
+                            extended = true,
+                            refinesEvents = listOf("split"),
+                            guards = listOf(Guard("grd2", "left_size = bytes(1)", false)),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val errors = typeChecker.checkProject(project)
+
+        assertThat(errors).isEmpty()
+    }
+
+    @Test
+    fun `extended event falls back to same-label refined event`() {
+        val project = project(
+            machines = listOf(
+                machine(
+                    "Base",
+                    variables = listOf(Variable("x", "x")),
+                    invariants = listOf(Invariant("inv1", "x ∈ ℕ", false)),
+                    events = listOf(
+                        event(
+                            "update",
+                            parameters = listOf(Parameter("p", "p")),
+                            guards = listOf(Guard("grd1", "p ∈ ℕ", false)),
+                        ),
+                    ),
+                ),
+                machine(
+                    "Refined",
+                    refinesMachine = "Base",
+                    variables = listOf(Variable("x", "x")),
+                    invariants = listOf(Invariant("inv1", "x ∈ ℕ", false)),
+                    events = listOf(
+                        event(
+                            "update",
+                            extended = true,
+                            guards = listOf(Guard("grd2", "p ≥ x", false)),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val errors = typeChecker.checkProject(project)
+
+        assertThat(errors).isEmpty()
+    }
+
+    @Test
+    fun `guard cannot reference abstract-only variable`() {
+        val project = project(
+            machines = listOf(
+                machine(
+                    "Base",
+                    variables = listOf(Variable("x", "x")),
+                    invariants = listOf(Invariant("inv1", "x ∈ ℕ", false)),
+                ),
+                machine(
+                    "Refined",
+                    refinesMachine = "Base",
+                    variables = listOf(Variable("y", "y")),
+                    invariants = listOf(Invariant("inv1", "y ∈ ℕ", false)),
+                    events = listOf(
+                        event(
+                            "bad",
+                            guards = listOf(Guard("grd1", "x = y", false)),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val errors = typeChecker.checkProject(project)
+
+        assertThat(errors).anyMatch {
+            it.severity == ValidationSeverity.ERROR &&
+                it.ruleId == ValidationRules.UNDECLARED_IDENTIFIER.id &&
+                it.element == "bad/grd1" &&
+                it.message.contains("'x'")
+        }
+    }
+
+    @Test
+    fun `variant cannot reference abstract-only variable`() {
+        val project = project(
+            machines = listOf(
+                machine(
+                    "Base",
+                    variables = listOf(Variable("x", "x")),
+                    invariants = listOf(Invariant("inv1", "x ∈ ℕ", false)),
+                ),
+                machine(
+                    "Refined",
+                    refinesMachine = "Base",
+                    variables = listOf(Variable("y", "y")),
+                    invariants = listOf(Invariant("inv1", "y ∈ ℕ", false)),
+                    variant = Variant("vrn1", "x"),
+                ),
+            ),
+        )
+
+        val errors = typeChecker.checkProject(project)
+
+        assertThat(errors).anyMatch {
+            it.severity == ValidationSeverity.ERROR &&
+                it.ruleId == ValidationRules.UNDECLARED_IDENTIFIER.id &&
+                it.element == "vrn1" &&
+                it.message.contains("'x'")
+        }
+    }
+
+    @Test
+    fun `action cannot assign abstract-only variable`() {
+        val project = project(
+            machines = listOf(
+                machine(
+                    "Base",
+                    variables = listOf(Variable("x", "x")),
+                    invariants = listOf(Invariant("inv1", "x ∈ ℕ", false)),
+                ),
+                machine(
+                    "Refined",
+                    refinesMachine = "Base",
+                    variables = listOf(Variable("y", "y")),
+                    invariants = listOf(Invariant("inv1", "y ∈ ℕ", false)),
+                    events = listOf(
+                        event(
+                            "bad",
+                            actions = listOf(Action("act1", "x ≔ y")),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val errors = typeChecker.checkProject(project)
+
+        assertThat(errors).anyMatch {
+            it.severity == ValidationSeverity.ERROR &&
+                it.ruleId == ValidationRules.UNDECLARED_IDENTIFIER.id &&
+                it.element == "bad/act1" &&
+                it.message.contains("'x'")
+        }
     }
 
     @Test
@@ -233,6 +468,30 @@ class TypeCheckerTest {
         val errors = typeChecker.checkProject(project)
 
         assertThat(errors).isEmpty()
+    }
+
+    @Test
+    fun `undeclared identifiers do not suppress inferred types for later formulas`() {
+        val project = project(
+            machines = listOf(
+                machine(
+                    "M1",
+                    variables = listOf(Variable("v", "v")),
+                    invariants = listOf(Invariant("inv1", "v ∈ ℕ ∧ y = 0", false)),
+                    variant = Variant("vrn1", "v"),
+                ),
+            ),
+        )
+
+        val errors = typeChecker.checkProject(project)
+
+        assertThat(errors)
+            .singleElement()
+            .satisfies({ error ->
+                assertThat(error.severity).isEqualTo(ValidationSeverity.ERROR)
+                assertThat(error.ruleId).isEqualTo(ValidationRules.UNDECLARED_IDENTIFIER.id)
+                assertThat(error.message).contains("'y'")
+            })
     }
 
     @Test
@@ -274,5 +533,70 @@ class TypeCheckerTest {
         val errors = typeChecker.checkProject(project)
 
         assertThat(errors).isEmpty()
+    }
+
+    @Test
+    fun `witness can reference abstract parameter named by label`() {
+        val project = project(
+            machines = listOf(
+                machine(
+                    "Base",
+                    variables = listOf(Variable("x", "x")),
+                    invariants = listOf(Invariant("inv1", "x ∈ ℤ", false)),
+                    events = listOf(
+                        event(
+                            "evt",
+                            parameters = listOf(Parameter("p", "p")),
+                            guards = listOf(Guard("grd1", "p ∈ ℤ", false)),
+                        ),
+                    ),
+                ),
+                machine(
+                    "Refined",
+                    refinesMachine = "Base",
+                    variables = listOf(Variable("x", "x")),
+                    invariants = listOf(Invariant("inv1", "x ∈ ℤ", false)),
+                    events = listOf(
+                        event(
+                            "evt",
+                            refinesEvents = listOf("evt"),
+                            witnesses = listOf(Witness("p", "p = x + 1")),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val errors = typeChecker.checkProject(project)
+
+        assertThat(errors).isEmpty()
+    }
+
+    @Test
+    fun `witness cannot introduce arbitrary label identifier`() {
+        val project = project(
+            machines = listOf(
+                machine(
+                    "M1",
+                    variables = listOf(Variable("x", "x")),
+                    invariants = listOf(Invariant("inv1", "x ∈ ℤ", false)),
+                    events = listOf(
+                        event(
+                            "evt",
+                            witnesses = listOf(Witness("p", "p = x + 1")),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val errors = typeChecker.checkProject(project)
+
+        assertThat(errors).anyMatch {
+            it.severity == ValidationSeverity.ERROR &&
+                it.ruleId == ValidationRules.UNDECLARED_IDENTIFIER.id &&
+                it.element == "evt/p" &&
+                it.message.contains("'p'")
+        }
     }
 }

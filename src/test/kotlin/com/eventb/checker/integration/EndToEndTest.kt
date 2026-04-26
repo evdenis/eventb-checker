@@ -80,6 +80,28 @@ class EndToEndTest {
     }
 
     @Test
+    fun `undeclared identifiers are reported`() {
+        val zip = createZip(
+            tempDir,
+            "project/Bad.bum" to """
+                <org.eventb.core.machineFile name="Bad">
+                    <org.eventb.core.invariant org.eventb.core.label="inv1"
+                        org.eventb.core.predicate="x ∈ ℕ" org.eventb.core.theorem="false"/>
+                </org.eventb.core.machineFile>
+            """.trimIndent(),
+        )
+
+        val result = validator.validate(zip.absolutePath)
+
+        assertThat(result.isValid).isFalse()
+        assertThat(result.errors).anyMatch {
+            it.severity == ValidationSeverity.ERROR &&
+                it.ruleId == ValidationRules.UNDECLARED_IDENTIFIER.id &&
+                it.message.contains("'x'")
+        }
+    }
+
+    @Test
     fun `missing cross reference is reported`() {
         val zip = createZip(
             tempDir,
@@ -95,6 +117,38 @@ class EndToEndTest {
         assertThat(result.isValid).isFalse()
         assertThat(result.errors).anyMatch {
             it.message.contains("SEES") && it.message.contains("NonExistent")
+        }
+    }
+
+    @Test
+    fun `parse errors do not suppress unrelated semantic findings`() {
+        val zip = createZip(
+            tempDir,
+            "project/Bad.bum" to """
+                <org.eventb.core.machineFile name="Bad">
+                    <org.eventb.core.invariant org.eventb.core.label="inv1"
+                        org.eventb.core.predicate="x ==== y" org.eventb.core.theorem="false"/>
+                </org.eventb.core.machineFile>
+            """.trimIndent(),
+            "project/NeedsInit.bum" to """
+                <org.eventb.core.machineFile name="NeedsInit">
+                    <org.eventb.core.variable org.eventb.core.identifier="n" org.eventb.core.label="n"/>
+                    <org.eventb.core.invariant org.eventb.core.label="inv1"
+                        org.eventb.core.predicate="n ∈ ℕ" org.eventb.core.theorem="false"/>
+                    <org.eventb.core.event org.eventb.core.label="INITIALISATION"
+                        org.eventb.core.convergence="0" org.eventb.core.extended="false"/>
+                </org.eventb.core.machineFile>
+            """.trimIndent(),
+        )
+
+        val result = validator.validate(zip.absolutePath)
+
+        assertThat(result.isValid).isFalse()
+        assertThat(result.errors).anyMatch { it.severity == ValidationSeverity.ERROR && it.message.contains("Formula parse error") }
+        assertThat(result.errors).anyMatch {
+            it.severity == ValidationSeverity.WARNING &&
+                it.message.contains("INITIALISATION") &&
+                it.message.contains("'n'")
         }
     }
 

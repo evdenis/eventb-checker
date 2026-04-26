@@ -106,6 +106,12 @@ object ValidationRules {
         "A proof-related file (.bpr/.bpo/.bps) could not be parsed as XML.",
     )
 
+    val UNDECLARED_IDENTIFIER = RuleDescriptor(
+        "EB018",
+        "Undeclared identifier",
+        "A formula references an identifier that is not declared in the surrounding Event-B scope.",
+    )
+
     val DUPLICATE_COMPONENT = RuleDescriptor(
         "EB019",
         "Duplicate component definition",
@@ -119,6 +125,7 @@ object ValidationRules {
         CROSS_REFERENCE_NOT_FOUND, WELL_DEFINEDNESS,
         DEAD_VARIABLE, UNMODIFIED_VARIABLE, DEAD_CONSTANT,
         INCOMPLETE_INITIALISATION,
-        UNDISCHARGED_PROOF, BROKEN_PROOF, PROOF_FILE_PARSE_ERROR, DUPLICATE_COMPONENT,
+        UNDISCHARGED_PROOF, BROKEN_PROOF, PROOF_FILE_PARSE_ERROR,
+        UNDECLARED_IDENTIFIER, DUPLICATE_COMPONENT,
     )
 }

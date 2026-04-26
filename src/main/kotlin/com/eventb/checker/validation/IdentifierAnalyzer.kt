@@ -4,9 +4,9 @@ import com.eventb.checker.model.EventBProject
 
 class IdentifierAnalyzer {
 
-    fun analyze(project: EventBProject, checkedFormulas: List<TypeCheckedFormula>): List<ValidationError> {
+    fun analyze(project: EventBProject, parsedFormulas: List<ParsedFormula>): List<ValidationError> {
         val findings = mutableListOf<ValidationError>()
-        val formulasByFile = checkedFormulas.groupBy { it.filePath }
+        val formulasByFile = parsedFormulas.groupBy { it.filePath }
 
         for (machine in project.machines) {
             val machineFormulas = formulasByFile[machine.filePath].orEmpty()

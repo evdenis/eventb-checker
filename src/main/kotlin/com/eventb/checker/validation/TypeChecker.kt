@@ -4,12 +4,34 @@ import com.eventb.checker.model.Context
 import com.eventb.checker.model.Event
 import com.eventb.checker.model.EventBProject
 import com.eventb.checker.model.Machine
+import org.eventb.core.ast.Assignment
 import org.eventb.core.ast.Formula
 import org.eventb.core.ast.FormulaFactory
 import org.eventb.core.ast.IParseResult
 import org.eventb.core.ast.ITypeEnvironmentBuilder
 
 class TypeChecker(private val ff: FormulaFactory = FormulaFactory.getDefault()) {
+
+    private data class IdentifierScope(val identifiers: Set<String>, val primedIdentifiers: Set<String> = emptySet()) {
+        fun contains(identifier: String): Boolean {
+            if (identifier in identifiers) {
+                return true
+            }
+
+            val baseIdentifier = identifier.removeSuffix("'")
+            return baseIdentifier != identifier && baseIdentifier in primedIdentifiers
+        }
+    }
+
+    private data class MachineScope(
+        val contextIdentifiers: Set<String>,
+        val concreteVariables: Set<String>,
+        val abstractVariables: Set<String>,
+    ) {
+        val allVariables: Set<String> = abstractVariables + concreteVariables
+        val invariantScope: IdentifierScope = IdentifierScope(contextIdentifiers + allVariables)
+        val concreteScope: IdentifierScope = IdentifierScope(contextIdentifiers + concreteVariables)
+    }
 
     private val parsePredicate: (String) -> IParseResult = { ff.parsePredicate(it, null) }
     private val extractPredicate: (IParseResult) -> Formula<*> = { it.parsedPredicate }
@@ -22,34 +44,59 @@ class TypeChecker(private val ff: FormulaFactory = FormulaFactory.getDefault()) 
 
     fun checkProjectFull(project: EventBProject): TypeCheckResult {
         val errors = mutableListOf<ValidationError>()
+        val parsedFormulas = mutableListOf<ParsedFormula>()
         val checkedFormulas = mutableListOf<TypeCheckedFormula>()
 
         val contextsByName = project.contexts.associateBy { it.name }
         val contextEnvs = mutableMapOf<String, ITypeEnvironmentBuilder>()
+        val contextDeclaredIdentifiers = mutableMapOf<String, Set<String>>()
 
         for (ctx in project.contexts) {
             if (ctx.name !in contextEnvs) {
-                buildContextEnv(ctx, contextsByName, contextEnvs, errors, checkedFormulas, mutableSetOf())
+                buildContextEnv(
+                    ctx,
+                    contextsByName,
+                    contextEnvs,
+                    contextDeclaredIdentifiers,
+                    errors,
+                    parsedFormulas,
+                    checkedFormulas,
+                    mutableSetOf(),
+                )
             }
         }
 
         val machinesByName = project.machines.associateBy { it.name }
         val machineEnvs = mutableMapOf<String, ITypeEnvironmentBuilder>()
+        val machineScopes = mutableMapOf<String, MachineScope>()
 
         for (machine in project.machines) {
             if (machine.name !in machineEnvs) {
-                checkMachine(machine, contextEnvs, machinesByName, machineEnvs, errors, checkedFormulas, mutableSetOf())
+                checkMachine(
+                    machine,
+                    contextEnvs,
+                    contextDeclaredIdentifiers,
+                    machinesByName,
+                    machineEnvs,
+                    machineScopes,
+                    errors,
+                    parsedFormulas,
+                    checkedFormulas,
+                    mutableSetOf(),
+                )
             }
         }
 
-        return TypeCheckResult(errors, checkedFormulas)
+        return TypeCheckResult(errors, parsedFormulas, checkedFormulas)
     }
 
     private fun buildContextEnv(
         ctx: Context,
         contextsByName: Map<String, Context>,
         contextEnvs: MutableMap<String, ITypeEnvironmentBuilder>,
+        contextDeclaredIdentifiers: MutableMap<String, Set<String>>,
         errors: MutableList<ValidationError>,
+        parsedFormulas: MutableList<ParsedFormula>,
         checkedFormulas: MutableList<TypeCheckedFormula>,
         visiting: MutableSet<String>,
     ): ITypeEnvironmentBuilder {
@@ -69,25 +116,43 @@ class TypeChecker(private val ff: FormulaFactory = FormulaFactory.getDefault()) 
         }
 
         val env = ff.makeTypeEnvironment()
+        val declaredIdentifiers = linkedSetOf<String>()
 
         for (extName in ctx.extendsContexts) {
             val extCtx = contextsByName[extName] ?: continue
-            val extEnv = buildContextEnv(extCtx, contextsByName, contextEnvs, errors, checkedFormulas, visiting)
+            val extEnv = buildContextEnv(
+                extCtx,
+                contextsByName,
+                contextEnvs,
+                contextDeclaredIdentifiers,
+                errors,
+                parsedFormulas,
+                checkedFormulas,
+                visiting,
+            )
             env.addAll(extEnv)
+            declaredIdentifiers.addAll(contextDeclaredIdentifiers[extName].orEmpty())
         }
 
         for (set in ctx.carrierSets) {
             env.addGivenSet(set.identifier)
+            declaredIdentifiers.add(set.identifier)
+        }
+
+        for (constant in ctx.constants) {
+            declaredIdentifiers.add(constant.identifier)
         }
 
         for (axiom in ctx.axioms) {
             typeCheckFormula(
-                axiom.predicate, env, ctx.filePath, axiom.label, errors, checkedFormulas,
+                axiom.predicate, env, ctx.filePath, axiom.label, errors, parsedFormulas, checkedFormulas,
                 FormulaKind.PREDICATE, parsePredicate, extractPredicate,
+                scope = IdentifierScope(declaredIdentifiers),
             )
         }
 
         contextEnvs[ctx.name] = env
+        contextDeclaredIdentifiers[ctx.name] = declaredIdentifiers.toSet()
         visiting.remove(ctx.name)
         return env
     }
@@ -95,9 +160,12 @@ class TypeChecker(private val ff: FormulaFactory = FormulaFactory.getDefault()) 
     private fun checkMachine(
         machine: Machine,
         contextEnvs: Map<String, ITypeEnvironmentBuilder>,
+        contextDeclaredIdentifiers: Map<String, Set<String>>,
         machinesByName: Map<String, Machine>,
         machineEnvs: MutableMap<String, ITypeEnvironmentBuilder>,
+        machineScopes: MutableMap<String, MachineScope>,
         errors: MutableList<ValidationError>,
+        parsedFormulas: MutableList<ParsedFormula>,
         checkedFormulas: MutableList<TypeCheckedFormula>,
         visiting: MutableSet<String>,
     ) {
@@ -116,72 +184,189 @@ class TypeChecker(private val ff: FormulaFactory = FormulaFactory.getDefault()) 
         }
 
         val env = ff.makeTypeEnvironment()
+        val contextIdentifiers = linkedSetOf<String>()
+        val abstractVariables = linkedSetOf<String>()
+        val concreteVariables = machine.variables.mapTo(linkedSetOf()) { it.identifier }
 
         for (ctxName in machine.seesContexts) {
             contextEnvs[ctxName]?.let { env.addAll(it) }
+            contextIdentifiers.addAll(contextDeclaredIdentifiers[ctxName].orEmpty())
         }
 
         machine.refinesMachine?.let { refName ->
             if (refName !in machineEnvs) {
                 val refMachine = machinesByName[refName]
                 if (refMachine != null) {
-                    checkMachine(refMachine, contextEnvs, machinesByName, machineEnvs, errors, checkedFormulas, visiting)
+                    checkMachine(
+                        refMachine,
+                        contextEnvs,
+                        contextDeclaredIdentifiers,
+                        machinesByName,
+                        machineEnvs,
+                        machineScopes,
+                        errors,
+                        parsedFormulas,
+                        checkedFormulas,
+                        visiting,
+                    )
                 }
             }
             machineEnvs[refName]?.let { env.addAll(it) }
+            machineScopes[refName]?.let { refScope ->
+                contextIdentifiers.addAll(refScope.contextIdentifiers)
+                abstractVariables.addAll(refScope.allVariables)
+            }
         }
+
+        val machineScope = MachineScope(
+            contextIdentifiers = contextIdentifiers,
+            concreteVariables = concreteVariables,
+            abstractVariables = abstractVariables,
+        )
 
         for (inv in machine.invariants) {
             typeCheckFormula(
-                inv.predicate, env, machine.filePath, inv.label, errors, checkedFormulas,
+                inv.predicate, env, machine.filePath, inv.label, errors, parsedFormulas, checkedFormulas,
                 FormulaKind.PREDICATE, parsePredicate, extractPredicate,
+                scope = machineScope.invariantScope,
             )
         }
 
         machine.variant?.let { variant ->
             typeCheckFormula(
-                variant.expression, env, machine.filePath, variant.label, errors, checkedFormulas,
+                variant.expression, env, machine.filePath, variant.label, errors, parsedFormulas, checkedFormulas,
                 FormulaKind.EXPRESSION, parseExpression, extractExpression,
+                scope = machineScope.concreteScope,
             )
         }
 
         machineEnvs[machine.name] = env
+        machineScopes[machine.name] = machineScope
         visiting.remove(machine.name)
 
         for (event in machine.events) {
-            checkEvent(event, env, machine.filePath, errors, checkedFormulas)
+            checkEvent(
+                event,
+                machine,
+                env,
+                machine.filePath,
+                machineScope,
+                machinesByName,
+                errors,
+                parsedFormulas,
+                checkedFormulas,
+            )
         }
     }
 
     private fun checkEvent(
         event: Event,
+        machine: Machine,
         machineEnv: ITypeEnvironmentBuilder,
         filePath: String,
+        machineScope: MachineScope,
+        machinesByName: Map<String, Machine>,
         errors: MutableList<ValidationError>,
+        parsedFormulas: MutableList<ParsedFormula>,
         checkedFormulas: MutableList<TypeCheckedFormula>,
     ) {
         val eventEnv = ff.makeTypeEnvironment()
         eventEnv.addAll(machineEnv)
+        val concreteParameters = effectiveEventParameterNames(machine, event, machinesByName)
+        val eventScope = IdentifierScope(
+            identifiers = machineScope.contextIdentifiers + machineScope.concreteVariables + concreteParameters,
+            primedIdentifiers = machineScope.concreteVariables,
+        )
 
         for (guard in event.guards) {
             typeCheckFormula(
-                guard.predicate, eventEnv, filePath, "${event.label}/${guard.label}", errors, checkedFormulas,
+                guard.predicate, eventEnv, filePath, "${event.label}/${guard.label}", errors, parsedFormulas, checkedFormulas,
                 FormulaKind.PREDICATE, parsePredicate, extractPredicate,
+                scope = eventScope,
             )
         }
 
         for (action in event.actions) {
             typeCheckFormula(
-                action.assignment, eventEnv, filePath, "${event.label}/${action.label}", errors, checkedFormulas,
+                action.assignment, eventEnv, filePath, "${event.label}/${action.label}", errors, parsedFormulas, checkedFormulas,
                 FormulaKind.ASSIGNMENT, parseAssignment, extractAssignment,
+                scope = eventScope,
             )
         }
 
+        val abstractParameters = abstractEventParameterNames(machine, event, machinesByName)
         for (witness in event.witnesses) {
-            typeCheckFormula(
-                witness.predicate, eventEnv, filePath, "${event.label}/${witness.label}", errors, checkedFormulas,
-                FormulaKind.PREDICATE, parsePredicate, extractPredicate,
+            val witnessDeclaredIdentifiers =
+                machineScope.contextIdentifiers +
+                    machineScope.allVariables +
+                    concreteParameters +
+                    validWitnessTarget(witness.label, abstractParameters, machineScope.abstractVariables)
+            val witnessScope = IdentifierScope(
+                identifiers = witnessDeclaredIdentifiers,
+                primedIdentifiers = machineScope.concreteVariables,
             )
+            typeCheckFormula(
+                witness.predicate, eventEnv, filePath, "${event.label}/${witness.label}", errors, parsedFormulas, checkedFormulas,
+                FormulaKind.PREDICATE, parsePredicate, extractPredicate,
+                scope = witnessScope,
+            )
+        }
+    }
+
+    private fun effectiveEventParameterNames(
+        machine: Machine,
+        event: Event,
+        machinesByName: Map<String, Machine>,
+        visiting: MutableSet<Pair<String, String>> = mutableSetOf(),
+    ): Set<String> {
+        val parameterNames = linkedSetOf<String>()
+        val key = machine.name to event.label
+        if (!visiting.add(key)) {
+            return event.parameters.mapTo(linkedSetOf()) { it.identifier }
+        }
+
+        if (event.extended) {
+            val refMachine = machine.refinesMachine?.let { machinesByName[it] }
+            if (refMachine != null) {
+                for (label in refinedEventLabels(event)) {
+                    val refEvent = refMachine.events.find { it.label == label }
+                    if (refEvent != null) {
+                        parameterNames.addAll(effectiveEventParameterNames(refMachine, refEvent, machinesByName, visiting))
+                    }
+                }
+            }
+        }
+
+        event.parameters.mapTo(parameterNames) { it.identifier }
+        visiting.remove(key)
+        return parameterNames
+    }
+
+    private fun abstractEventParameterNames(machine: Machine, event: Event, machinesByName: Map<String, Machine>): Set<String> {
+        val refMachine = machine.refinesMachine?.let { machinesByName[it] } ?: return emptySet()
+        val parameterNames = linkedSetOf<String>()
+        for (label in refinedEventLabels(event)) {
+            val refEvent = refMachine.events.find { it.label == label }
+            if (refEvent != null) {
+                parameterNames.addAll(effectiveEventParameterNames(refMachine, refEvent, machinesByName))
+            }
+        }
+        return parameterNames
+    }
+
+    private fun refinedEventLabels(event: Event): List<String> =
+        event.refinesEvents.ifEmpty { if (event.extended) listOf(event.label) else emptyList() }
+
+    private fun validWitnessTarget(label: String, abstractParameters: Set<String>, abstractVariables: Set<String>): Set<String> {
+        if (label in abstractParameters) {
+            return setOf(label)
+        }
+
+        val baseLabel = label.removeSuffix("'")
+        return if (baseLabel != label && baseLabel in abstractVariables) {
+            setOf(label)
+        } else {
+            emptySet()
         }
     }
 
@@ -191,21 +376,42 @@ class TypeChecker(private val ff: FormulaFactory = FormulaFactory.getDefault()) 
         filePath: String,
         elementLabel: String,
         errors: MutableList<ValidationError>,
+        parsedFormulas: MutableList<ParsedFormula>,
         checkedFormulas: MutableList<TypeCheckedFormula>,
         kind: FormulaKind,
         parse: (String) -> IParseResult,
         extract: (IParseResult) -> Formula<*>,
+        scope: IdentifierScope,
     ) {
         val parseResult = parse(formula)
         if (parseResult.hasProblem()) return
 
         val parsed = extract(parseResult)
+        parsedFormulas.add(ParsedFormula(parsed, formula, filePath, elementLabel, kind))
+        val undeclaredIdentifiers = collectUndeclaredIdentifiers(parsed, kind, scope)
+        if (undeclaredIdentifiers.isNotEmpty()) {
+            for (identifier in undeclaredIdentifiers) {
+                errors.add(
+                    ValidationError(
+                        filePath = filePath,
+                        severity = ValidationSeverity.ERROR,
+                        message = "Undeclared identifier: '$identifier' is not declared in scope",
+                        element = elementLabel,
+                        formula = formula,
+                        ruleId = ValidationRules.UNDECLARED_IDENTIFIER.id,
+                    ),
+                )
+            }
+        }
+
         val tcResult = parsed.typeCheck(env)
 
         if (tcResult.isSuccess) {
             env.addAll(tcResult.inferredEnvironment)
-            checkedFormulas.add(TypeCheckedFormula(parsed, formula, filePath, elementLabel, kind))
-        } else {
+            if (undeclaredIdentifiers.isEmpty()) {
+                checkedFormulas.add(TypeCheckedFormula(parsed, formula, filePath, elementLabel, kind))
+            }
+        } else if (undeclaredIdentifiers.isEmpty()) {
             for (problem in tcResult.problems) {
                 errors.add(
                     ValidationError(
@@ -219,5 +425,17 @@ class TypeChecker(private val ff: FormulaFactory = FormulaFactory.getDefault()) 
                 )
             }
         }
+    }
+
+    private fun collectUndeclaredIdentifiers(parsed: Formula<*>, kind: FormulaKind, scope: IdentifierScope): List<String> {
+        val identifiers = linkedSetOf<String>()
+        identifiers.addAll(parsed.freeIdentifiers.map { it.name })
+        if (kind == FormulaKind.ASSIGNMENT) {
+            identifiers.addAll((parsed as Assignment).assignedIdentifiers.map { it.name })
+        }
+
+        return identifiers
+            .filterNot { scope.contains(it) }
+            .sorted()
     }
 }

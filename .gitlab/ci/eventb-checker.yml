@@ -3,7 +3,7 @@
 # Usage — add to your .gitlab-ci.yml:
 #
 #   include:
-#     - remote: 'https://raw.githubusercontent.com/evdenis/eventb-checker/master/.gitlab/ci/eventb-checker.yml'
+#     - remote: 'https://raw.githubusercontent.com/eventb-rossi/eventb-checker/master/.gitlab/ci/eventb-checker.yml'
 #   variables:
 #     EVENTB_MODEL_GLOB: "models/*.zip"
 #
@@ -13,14 +13,14 @@
 #   EVENTB_CHECKER_VERSION   – Release tag or "latest" (default: "latest")
 #   EVENTB_SHOW_INFO         – "true" to include INFO-severity findings (default: "false")
 #   EVENTB_PROOFS            – "true" to check proof status from .bpr/.bpo/.bps files (default: "false")
-#   EVENTB_CHECKER_REPO      – GitHub repo for JAR download (default: "evdenis/eventb-checker")
+#   EVENTB_CHECKER_REPO      – GitHub repo for JAR download (default: "eventb-rossi/eventb-checker")
 
 variables:
   EVENTB_JAVA_VERSION: "21"
   EVENTB_CHECKER_VERSION: "latest"
   EVENTB_SHOW_INFO: "false"
   EVENTB_PROOFS: "false"
-  EVENTB_CHECKER_REPO: "evdenis/eventb-checker"
+  EVENTB_CHECKER_REPO: "eventb-rossi/eventb-checker"
 
 # Hidden job — downloads release JAR and validates
 .eventb-validate-jar:

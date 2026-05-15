@@ -92,7 +92,7 @@ jobs:
 
       - uses: actions/checkout@v6
         with:
-          repository: evdenis/eventb-checker
+          repository: eventb-rossi/eventb-checker
           ref: ${{ inputs.checker-ref }}
           path: _checker
 

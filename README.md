@@ -147,7 +147,7 @@ The simplest option — a single `uses:` step that downloads the release JAR and
 ```yaml
 steps:
   - uses: actions/checkout@v6
-  - uses: evdenis/eventb-checker@v1.0
+  - uses: eventb-rossi/eventb-checker@v1.0
     with:
       model-path: "models/*.zip"
 ```
@@ -169,7 +169,7 @@ External GitLab projects can validate Event-B models by including the reusable t
 
 ```yaml
 include:
-  - remote: 'https://raw.githubusercontent.com/evdenis/eventb-checker/master/.gitlab/ci/eventb-checker.yml'
+  - remote: 'https://raw.githubusercontent.com/eventb-rossi/eventb-checker/master/.gitlab/ci/eventb-checker.yml'
 
 variables:
   EVENTB_MODEL_GLOB: "models/*.zip"
@@ -188,7 +188,7 @@ If `EVENTB_MODEL_GLOB` matches no files, the job fails as a configuration error 
 | `EVENTB_CHECKER_VERSION` | no | `"latest"` | Release tag or `"latest"` |
 | `EVENTB_SHOW_INFO` | no | `"false"` | Include INFO-severity findings |
 | `EVENTB_PROOFS` | no | `"false"` | Check proof status from `.bpr`/`.bpo`/`.bps` files |
-| `EVENTB_CHECKER_REPO` | no | `"evdenis/eventb-checker"` | GitHub repo for JAR download |
+| `EVENTB_CHECKER_REPO` | no | `"eventb-rossi/eventb-checker"` | GitHub repo for JAR download |
 
 ### Build from Source
 
@@ -196,7 +196,7 @@ To build the checker from source instead of downloading a release JAR:
 
 ```yaml
 include:
-  - remote: 'https://raw.githubusercontent.com/evdenis/eventb-checker/master/.gitlab/ci/eventb-checker.yml'
+  - remote: 'https://raw.githubusercontent.com/eventb-rossi/eventb-checker/master/.gitlab/ci/eventb-checker.yml'
 
 eventb-validate:
   extends: .eventb-validate-src
@@ -210,7 +210,7 @@ Override the concrete job to add your own configuration:
 
 ```yaml
 include:
-  - remote: 'https://raw.githubusercontent.com/evdenis/eventb-checker/master/.gitlab/ci/eventb-checker.yml'
+  - remote: 'https://raw.githubusercontent.com/eventb-rossi/eventb-checker/master/.gitlab/ci/eventb-checker.yml'
 
 eventb-validate:
   extends: .eventb-validate-jar

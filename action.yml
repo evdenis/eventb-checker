@@ -43,7 +43,7 @@ runs:
     - name: Download eventb-checker JAR
       shell: bash
       run: |
-        repo="evdenis/eventb-checker"
+        repo="eventb-rossi/eventb-checker"
         version="${{ inputs.checker-version }}"
         if [ "$version" = "latest" ]; then
           api_url="https://api.github.com/repos/$repo/releases/latest"

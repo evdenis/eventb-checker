@@ -12,7 +12,7 @@ class SarifReportFormatter : ReportFormatter {
         private const val SARIF_SCHEMA = "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json"
         private const val SARIF_VERSION = "2.1.0"
         private const val TOOL_NAME = "eventb-checker"
-        private const val TOOL_INFO_URI = "https://github.com/evdenis/eventb-checker"
+        private const val TOOL_INFO_URI = "https://github.com/eventb-rossi/eventb-checker"
 
         private val TOOL_VERSION: String by lazy {
             SarifReportFormatter::class.java.`package`?.implementationVersion ?: "dev"

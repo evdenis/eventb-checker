@@ -43,8 +43,8 @@ if ! grep -q "eventb-checker-${version}-all.jar" README.md; then
 fi
 
 # 4. Check README.md contains the action tag
-if ! grep -q "evdenis/eventb-checker@${tag}" README.md; then
-    emit_error "README.md" "README.md does not reference 'evdenis/eventb-checker@${tag}'"
+if ! grep -q "eventb-rossi/eventb-checker@${tag}" README.md; then
+    emit_error "README.md" "README.md does not reference 'eventb-rossi/eventb-checker@${tag}'"
 fi
 
 if [ "$errors" -gt 0 ]; then
